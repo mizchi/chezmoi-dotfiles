@@ -1,113 +1,113 @@
 ---
 name: justfile
-description: just コマンドランナーのリファレンス。justfile の書き方と GitHub Actions での使用例を提供。
+description: Reference for just command runner. Provides justfile syntax and GitHub Actions examples.
 ---
 
 # justfile Skill
 
-just はプロジェクト固有のコマンドを管理するコマンドランナー。Make に似た構文だがよりシンプル。
+just is a command runner for project-specific commands. Similar to Make but simpler.
 
-## 基本構文
+## Basic Syntax
 
 ```just
-# デフォルトレシピ（最初に定義されたものが just 実行時に呼ばれる）
+# Default recipe (runs when just is called without arguments)
 default:
   @echo "Available: just --list"
 
-# 基本レシピ
+# Basic recipe
 build:
   cargo build --release
 
-# 依存関係
+# Dependencies
 test: build
   cargo test
 
-# 引数
+# Arguments
 greet name:
   echo "Hello, {{name}}!"
 
-# デフォルト引数
+# Default arguments
 serve port="8080":
   python -m http.server {{port}}
 
-# 可変長引数
+# Variadic arguments
 run *args:
   cargo run -- {{args}}
 ```
 
-## 変数
+## Variables
 
 ```just
-# 文字列
+# String
 version := "1.0.0"
 
-# シェルコマンドの結果
+# Shell command result
 git_hash := `git rev-parse --short HEAD`
 
-# 環境変数（デフォルト付き）
+# Environment variable with default
 home := env_var_or_default("HOME", "/tmp")
 
-# 使用
+# Usage
 info:
   echo "Version: {{version}}, Hash: {{git_hash}}"
 ```
 
-## 設定
+## Settings
 
 ```just
-# シェル指定
+# Shell
 set shell := ["bash", "-cu"]
 
-# .env 読み込み
+# Load .env
 set dotenv-load
 
-# エラー時に停止しない
+# Continue on error
 set ignore-errors
 
-# コマンド表示を抑制
+# Suppress command echo
 set quiet
 
-# 作業ディレクトリ
+# Working directory
 set working-directory := "subdir"
 ```
 
-## 条件分岐
+## Conditionals
 
 ```just
-# OS 判定
+# OS detection
 install:
   {{if os() == "macos" { "brew install foo" } else { "apt install foo" }}}
 
-# アーキテクチャ判定
+# Architecture detection
 build:
   {{if arch() == "aarch64" { "make arm" } else { "make x86" }}}
 ```
 
-## 組み込み関数
+## Built-in Functions
 
-| 関数 | 説明 |
-|------|------|
-| `os()` | OS 名 (linux, macos, windows) |
-| `arch()` | アーキテクチャ (x86_64, aarch64) |
-| `env_var("NAME")` | 環境変数取得 |
-| `justfile_directory()` | justfile のディレクトリ |
-| `invocation_directory()` | 呼び出し元ディレクトリ |
+| Function | Description |
+|----------|-------------|
+| `os()` | OS name (linux, macos, windows) |
+| `arch()` | Architecture (x86_64, aarch64) |
+| `env_var("NAME")` | Get environment variable |
+| `justfile_directory()` | Directory containing justfile |
+| `invocation_directory()` | Directory where just was invoked |
 
-## よく使うコマンド
+## Common Commands
 
 ```bash
-just              # デフォルトレシピ実行
-just recipe       # 指定レシピ実行
-just recipe arg   # 引数付き実行
-just --list       # レシピ一覧
-just --dry-run    # 実行せず表示
-just --choose     # fzf で選択
-just --fmt        # フォーマット
+just              # Run default recipe
+just recipe       # Run specific recipe
+just recipe arg   # Run with arguments
+just --list       # List recipes
+just --dry-run    # Show without running
+just --choose     # Select with fzf
+just --fmt        # Format justfile
 ```
 
 ## GitHub Actions
 
-`extractions/setup-just@v3` を使用。完全な例は `assets/gh_action_example.yaml` を参照。
+Use `extractions/setup-just@v3`. See `assets/gh_action_example.yaml` for full example.
 
 ```yaml
 steps:
@@ -115,13 +115,13 @@ steps:
 
   - uses: extractions/setup-just@v3
     # with:
-    #   just-version: '1.40.0'  # バージョン指定（任意）
+    #   just-version: '1.40.0'  # Optional version
 
   - run: just build
   - run: just test
 ```
 
-## 実用的な justfile 例
+## Practical Example
 
 ```just
 set dotenv-load
@@ -130,37 +130,37 @@ set shell := ["bash", "-cu"]
 default:
   @just --list
 
-# 開発サーバー
+# Dev server
 dev:
   npm run dev
 
-# ビルド
+# Build
 build:
   npm run build
 
-# テスト
+# Test
 test *args:
   npm test {{args}}
 
-# lint + format
+# Lint + format
 check:
   npm run lint
   npm run format:check
 
-# CI 用（GitHub Actions から呼ばれる）
+# CI (called from GitHub Actions)
 ci: check build test
 
-# リリース
+# Release
 release version:
   git tag -a v{{version}} -m "Release v{{version}}"
   git push origin v{{version}}
 
-# クリーンアップ
+# Cleanup
 clean:
   rm -rf dist node_modules
 ```
 
-## 参考
+## References
 
 - https://github.com/casey/just
 - https://just.systems/man/en/
