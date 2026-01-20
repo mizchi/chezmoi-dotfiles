@@ -6,6 +6,20 @@
 - Avoid classes; use pure functions and separate state
 - Keep functions idempotent
 
+## Package Manager
+
+Use pnpm unless package-lock.json exists:
+
+```bash
+pnpm install
+pnpm add <package>
+```
+
+## Bundler
+
+- Frontend: vite
+- Library: tsdown
+
 ## Execution
 
 Node.js 24+ runs TypeScript directly without flags:
