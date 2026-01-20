@@ -1,89 +1,89 @@
-# jj (Jujutsu) ベストプラクティス
+# jj (Jujutsu) Best Practices
 
-## 基本概念
+## Core Concepts
 
-jj は Git と異なり、ワーキングコピーの変更を**自動的にコミット**する。`jj status` などのコマンド実行時に変更が自動記録される。
+jj automatically commits working copy changes, unlike Git. Changes are recorded when running commands like `jj status`.
 
-- 新規ファイルは自動追跡（`.gitignore` で除外しない限り）
-- 「現在のブランチ」という概念がない
-- ブックマーク（Git のブランチに相当）は必要になるまで作成しない
+- New files are tracked automatically (unless in `.gitignore`)
+- No concept of "current branch"
+- Bookmarks (equivalent to Git branches) are created only when needed
 
-## 基本ワークフロー
+## Basic Workflow
 
 ```bash
-# 状態確認
+# Check status
 jj status
 jj log
 
-# 変更を記録（自動コミットされているので describe でメッセージを付ける）
-jj describe -m "変更内容"
+# Add commit message (changes are auto-committed)
+jj describe -m "message"
 
-# 新しい変更を開始（現在の変更を確定して次へ）
+# Start new change (finalize current and move on)
 jj new
 
-# 直前のコミットを編集したい場合
-jj new @-          # 親に移動
-# ... 編集 ...
-jj squash          # 子にマージ
+# Edit previous commit
+jj new @-          # Move to parent
+# ... edit ...
+jj squash          # Merge into child
 ```
 
-## GitHub PR ワークフロー
+## GitHub PR Workflow
 
-### ブックマーク作成とプッシュ
+### Create bookmark and push
 
 ```bash
-# 方法1: 自動生成（push-xxxx のような名前）
+# Option 1: Auto-generated name (push-xxxx)
 jj git push -c @-
 
-# 方法2: 明示的に命名
+# Option 2: Explicit naming
 jj bookmark create feature-name -r @-
 jj git push
 ```
 
-### PR 更新（レビュー対応）
+### Update PR (address review comments)
 
 ```bash
-# 方法1: コミット追加型（履歴を残す）
-# 新しいコミットを追加してプッシュ
+# Option 1: Add commits (preserve history)
+# Add new commits and push
 
-# 方法2: コミット修正型（履歴を書き換え）
-jj new @-              # 修正したいコミットの子に移動
-# ... 修正 ...
-jj squash              # 親にマージ
+# Option 2: Amend commits (rewrite history)
+jj new @-              # Move to child of target commit
+# ... fix ...
+jj squash              # Merge into parent
 jj git push --bookmark feature-name  # force push
 ```
 
-### リモートの更新を取り込む
+### Sync with remote
 
 ```bash
 jj git fetch
-jj rebase -d main      # main の最新にリベース
+jj rebase -d main      # Rebase onto latest main
 ```
 
-## 便利なコマンド
+## Useful Commands
 
-| コマンド | 説明 |
-|---------|------|
-| `jj log -r 'all()'` | 全コミットを表示 |
-| `jj split -i` | 対話的にコミットを分割（git add -p 相当） |
-| `jj squash` | 現在の変更を親にマージ |
-| `jj abandon` | コミットを破棄 |
-| `jj undo` | 直前の操作を取り消し |
-| `jj op log` | 操作履歴を表示 |
+| Command | Description |
+|---------|-------------|
+| `jj log -r 'all()'` | Show all commits |
+| `jj split -i` | Interactive split (like git add -p) |
+| `jj squash` | Merge current changes into parent |
+| `jj abandon` | Discard commit |
+| `jj undo` | Undo last operation |
+| `jj op log` | Show operation history |
 
-## コンフリクト解決
+## Conflict Resolution
 
-コンフリクトはファイル内にマーカーとして埋め込まれる。一度に全て解決する必要はない。
+Conflicts are embedded as markers in files. No need to resolve all at once.
 
 ```bash
-# コンフリクト状態で新しいコミットを作成
+# Create new commit with conflicts
 jj new
-# ... 解決 ...
-jj squash   # 解決を元のコミットにマージ
+# ... resolve ...
+jj squash   # Merge resolution into original commit
 ```
 
-## 注意点
+## Notes
 
-- `jj git push --all` はブックマークのみをプッシュ（全リビジョンではない）
-- Vite/Vitest 使用時は `.jj/**` を watch 対象から除外する
-- ブックマークの競合は `jj bookmark move <name> --to <commit>` で解決
+- `jj git push --all` pushes bookmarks only (not all revisions)
+- Exclude `.jj/**` from watch in Vite/Vitest
+- Resolve bookmark conflicts with `jj bookmark move <name> --to <commit>`
