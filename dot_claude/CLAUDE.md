@@ -4,7 +4,7 @@
 
 タスク管理では基本的にそのプロジェクトの方針に従うが、自分のプロジェクトで複数の言語を管理するときは justfile でタスクの管理を行う。
 
-バージョン管理には git より jj (Jujutsu) を優先して使う。jj は Git 互換モードで動作し、`jj git push` でリモートにプッシュできる。基本的なワークフローは `jj status` で確認、`jj describe -m "msg"` でコミットメッセージ、`jj new` で新しい変更を開始する。
+バージョン管理には git より jj (Jujutsu) を優先して使う。jj は Git 互換モードで動作し、`jj git push` でリモートにプッシュできる。基本的なワークフローは `jj status` で確認、`jj describe -m "msg"` でコミットメッセージ、`jj new` で新しい変更を開始する。jj が初期化されていないリポジトリでは `jj git init --colocate` で初期化する。
 
 node.js は v24 以降を使う。npm より pnpm を優先する。package.json が複数ある monorepo は pnpm workspace を使う。言語に関わらず E2E テストでは playwright test を使う。
 
