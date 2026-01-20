@@ -3,7 +3,7 @@
     "DISABLE_ZOXIDE": "1"
   },
   "permissions": {
-    "defaultMode": "bypassPermissions"
+    "defaultMode": "{{ .claude_default_mode | default "acceptEdits" }}"
   },
   "enabledPlugins": {
     "github@claude-plugins-official": true,
