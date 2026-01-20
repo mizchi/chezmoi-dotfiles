@@ -1,0 +1,57 @@
+# PATH
+source ~/.config/zsh/path.zsh
+
+# Environment
+export HELIX_RUNTIME="$HOME/ghq/github.com/helix-editor/helix/runtime"
+export EDITOR="hx"
+export HOMEBREW_FORBIDDEN_FORMULAE="node python python3 pip npm pnpm yarn claude"
+export BUN_INSTALL="$HOME/.bun"
+export WASMTIME_HOME="$HOME/.wasmtime"
+export CARAPACE_BRIDGES='zsh,fish,bash,inshellisense'
+
+# Aliases
+alias la="eza -a --git -g -h --oneline"
+alias ls="eza"
+alias h="hx"
+alias j="just"
+
+# History
+HISTFILE=$HOME/.zsh_history
+HISTSIZE=100000
+SAVEHIST=100000
+setopt share_history
+setopt hist_ignore_dups
+setopt hist_ignore_all_dups
+
+# Options
+setopt auto_pushd
+setopt auto_cd
+
+# Completion
+autoload -Uz compinit
+compinit
+zstyle ':completion:*' menu select
+zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
+
+# FPATH for completions
+fpath=($HOME/.zsh/completions $fpath)
+
+# Tool initializations
+eval "$(starship init zsh)"
+eval "$(mise activate zsh)"
+eval "$(atuin init zsh --disable-up-arrow)"
+eval "$(sheldon source)"
+eval "$(zoxide init zsh --cmd cd)"
+source <(carapace _carapace)
+
+# Deno
+[[ -f "$HOME/.deno/env" ]] && source "$HOME/.deno/env"
+
+# Bun completions
+[[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun"
+
+# Functions
+source ~/.config/zsh/functions.zsh
+
+# Just completions
+source ~/.config/zsh/just.zsh

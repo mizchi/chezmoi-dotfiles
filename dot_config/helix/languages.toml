@@ -1,0 +1,36 @@
+[[language]]
+name = "lean"
+scope = "source.lean"
+injection-regex = "lean"
+file-types = ["lean"]
+roots = [ "lakefile.lean", "lakefile.toml" ]
+comment-token = "--"
+block-comment-tokens = { start = "/-", end = "-/" }
+language-servers = [ "lean" ]
+indent = { tab-width = 2, unit = "  " }
+rulers = [101]
+text-width = 100
+[language-server]
+lean = { command = "lake", args = ["serve"] }
+# indent = { tab-width = 2, unit = "  " }
+# auto-format = true
+
+[language-server.moonbit-lsp]
+
+command = "moonbit-lsp"
+
+[[language]]
+name = "moonbit"
+scope = "source.moonbit"
+injection-regex = "moonbit"
+file-types = ["mbt"]
+comment-tokens = "//"
+indent = { tab-width = 2, unit = "  " }
+language-servers = [ "moonbit-lsp" ]
+roots = ["moon.mod.json"]
+formatter = { command = "moonfmt" }
+auto-format = true
+
+[[grammar]]
+name = "moonbit"
+source = { git = "https://github.com/moonbitlang/tree-sitter-moonbit", rev = "main" }

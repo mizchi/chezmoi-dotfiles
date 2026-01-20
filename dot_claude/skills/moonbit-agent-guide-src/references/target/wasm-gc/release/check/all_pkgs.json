@@ -1,0 +1,9 @@
+{
+  "packages": [
+    {
+      "root": "moon/test",
+      "rel": "single",
+      "artifact": "/Users/mizchi/.claude/skills/moonbit-agent-guide/references/target/wasm-gc/release/check/single/single.mi"
+    }
+  ]
+}
