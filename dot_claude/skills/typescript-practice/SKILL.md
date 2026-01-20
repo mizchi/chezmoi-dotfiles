@@ -20,6 +20,17 @@ pnpm add <package>
 - Frontend: vite
 - Library: tsdown
 
+## Lint
+
+Use oxlint (fast, Rust-based):
+
+```bash
+pnpm add -D oxlint
+pnpm oxlint
+```
+
+See `assets/oxlint.json` for config example.
+
 ## Execution
 
 Node.js 24+ runs TypeScript directly without flags:
