@@ -37,8 +37,9 @@ moon ide outline src/parser.mbt
 
 ### Other Rules
 
+- **Prefer `moon.pkg` over `moon.pkg.json`** - Use `NEW_MOON_PKG=1 moon fmt` to convert
 - Use `moon doc '<Type>'` to explore APIs before implementing
-- Check reference/configuration.md before editing moon.pkg.json / moon.mod.json
+- Check reference/configuration.md before editing moon.pkg / moon.mod.json
 - Check reference/agents.md when updating CLAUDE.md
 
 ## Common Pitfalls

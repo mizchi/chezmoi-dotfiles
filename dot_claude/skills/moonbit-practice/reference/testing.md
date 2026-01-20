@@ -94,19 +94,21 @@ test "complex structure" {
 
 ```moonbit
 ///|
-bench "array_sum" {
+test "array_sum benchmark" (b : @bench.T) {
   let arr = Array::make(1000, 1)
-  arr.fold(init=0, fn(a, b) { a + b })
+  b.bench(fn() { arr.fold(init=0, fn(a, b) { a + b }) })
 }
 
 ///|
-bench "array_sum_iter" {
+test "array_sum_iter benchmark" (b : @bench.T) {
   let arr = Array::make(1000, 1)
-  let mut sum = 0
-  for v in arr {
-    sum = sum + v
-  }
-  sum
+  b.bench(fn() {
+    let mut sum = 0
+    for v in arr {
+      sum = sum + v
+    }
+    sum
+  })
 }
 ```
 
