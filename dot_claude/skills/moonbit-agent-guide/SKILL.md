@@ -3,12 +3,86 @@ name: moonbit-agent-guide
 description: Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/run/test/doc/ide etc.), or following MoonBit-specific layout, documentation, and testing conventions.
 ---
 
+# Agent Workflow
+
+For fast, reliable task execution, follow this order:
+
+1. **Clarify goal and constraints**
+   - Confirm expected behavior, non-goals, and compatibility constraints (target backend, public API stability, performance limits).
+
+2. **Locate module/package boundaries**
+   - Find `moon.mod.json` (module root) and relevant `moon.pkg`/`moon.pkg.json` files (package boundaries and imports).
+
+3. **Discover APIs before coding**
+   - Prefer `moon ide doc` queries to discover existing functions/types/methods before adding new code.
+   - Use `moon ide outline`, `moon ide peek-def`, and `moon ide find-references` for semantic navigation.
+
+4. **Reliable refactoring**
+   - Use `moon ide rename` for semantic refactoring. If multiple symbols share a name, add `--loc filename:line:col`.
+   - Use `#deprecated` when old APIs should warn and be removed after migration.
+   - Use `#alias(old_api, deprecated)` when temporary backward compatibility is required during migration.
+   - Remove `#deprecated` and `#alias` shims once callers are migrated and warnings are gone.
+5. **Edit minimally and package-locally**
+   - Keep changes inside the correct package, use `///|` top-level delimiters, and split code into cohesive files.
+
+6. **Validate in a tight loop**
+   - Run `moon check` after edits.
+   - Run targeted tests with `moon test [dirname|filename] --filter 'glob'` and use `moon test --update` for snapshot changes.
+
+7. **Finalize before handoff**
+   - Run `moon fmt`.
+   - Run `moon info` to verify whether public APIs changed (`pkg.generated.mbti` diff).
+   - Report changed files, validation commands, and any remaining risks.
+
+
+## Fast Task Playbooks
+
+Use the smallest playbook that matches the request.
+
+### Bug Fix (No API Change Intended)
+
+1. Reproduce or identify the failing behavior.
+2. Locate symbols with `moon ide outline`, `moon ide peek-def`, `moon ide find-references`.
+3. Implement minimal fix in the current package.
+4. Validate with:
+   - `moon check`
+   - `moon test [dirname|filename] --filter 'glob'` (or closest targeted test scope)
+   - `moon fmt`
+   - `moon info` (confirm `pkg.generated.mbti` unchanged)
+
+### Refactor (Behavior Preserving)
+
+1. Confirm behavior/API invariants first.
+2. Prefer semantic rename/navigation tools:
+   - `moon ide rename`
+   - `moon ide find-references`
+   - `moon ide peek-def`
+   - If multiple symbols share a name, use `moon ide rename <symbol> <new_name> --loc filename:line:col`.
+3. Keep edits package-local and file-organization-focused.
+4. Validate with:
+   - `moon check`
+   - `moon test [dirname|filename]`
+   - `moon fmt`
+   - `moon info` (API should remain unchanged unless requested)
+
+### New Feature or Public API
+
+1. Discover existing idioms with `moon ide doc` before introducing new names.
+2. Add implementation in cohesive files with `///|` delimiters.
+3. Add/extend black-box tests and docstring examples for public APIs.
+4. Validate with:
+   - `moon check`
+   - `moon test [dirname|filename]` (use `--update` for snapshots when needed)
+   - `moon fmt`
+   - `moon info` (review and keep intended `pkg.generated.mbti` changes)
+
+
 # MoonBit Project Layouts
 
 MoonBit uses the `.mbt` extension for source code files and interface files with the `.mbti` extension. At
 the top-level of a MoonBit project there is a `moon.mod.json` file specifying
 the metadata of the project. The project may contain multiple packages, each
-with its own `moon.pkg` or `moon.pkg.json` file. Subdirectories may also contain `moon.mod.json`
+with its own `moon.pkg` or `moon.pkg.json` (legacy mode). Subdirectories may also contain `moon.mod.json`
 files indicating that a different set of dependencies can be used for that subdir.
 
 ## Example layout
@@ -16,17 +90,17 @@ files indicating that a different set of dependencies can be used for that subdi
 ```
 my_module
 ├── moon.mod.json             # Module metadata, source field (optional) specifies the source directory of the module
-├── moon.pkg.json             # Package metadata (each directory is a package like Golang)
+├── moon.pkg             # Package metadata (each directory is a package like Golang)
 ├── README.mbt.md             # Markdown with tested code blocks (`test "..." { ... }`)
 ├── README.md -> README.mbt.md
 ├── cmd                       # Command line directory
 │   └── main
 │       ├── main.mbt
-│       └── moon.pkg.json     # executable package with `{"is_main": true}`
+│       └── moon.pkg     # executable package with `options("is-main": true)`
 ├── liba/                     # Library packages
-│   └── moon.pkg.json         # Referenced by other packages as `@username/my_module/liba`
+│   └── moon.pkg         # Referenced by other packages as `@username/my_module/liba`
 │   └── libb/                 # Library packages
-│       └── moon.pkg.json     # Referenced by other packages as `@username/my_module/liba/libb`
+│       └── moon.pkg     # Referenced by other packages as `@username/my_module/liba/libb`
 ├── user_pkg.mbt              # Root packages, referenced by other packages as `@username/my_module`
 ├── user_pkg_wbtest.mbt       # White-box tests (only needed for testing internal private members, similar to Golang's package mypackage)
 └── user_pkg_test.mbt         # Black-box tests
@@ -37,7 +111,7 @@ my_module
   A MoonBit *module* is like a Go module; it is a collection of packages in subdirectories, usually corresponding to a repository or project.
   Module boundaries matter for dependency management and import paths.
 
-- **Package**: characterized by a `moon.pkg.json` (or `moon.pkg`) file in each directory.
+- **Package**: characterized by a `moon.pkg` (or `moon.pkg.json`) file in each directory.
   All subcommands of `moon` will
   still be executed in the directory of the module (where `moon.mod.json` is
   located), not the current package.
@@ -87,8 +161,7 @@ my_module
    They provide a formal, concise overview of all exported types, functions, and traits without implementation details.
    They are generated using `moon info` and useful for code review. When you have a commit that does not change public APIs, `pkg.generated.mbti` files will remain unchanged, so it is recommended to put `pkg.generated.mbti` in version control when you are done.
 
-   You can also use `moon ide doc @moonbitlang/core/strconv` to explore the public API of a package interactively and `moon ide peek-def 'Array::join'` to read
-   the definition.
+   For IDE navigation and symbol lookup commands, see the dedicated `moon ide` section below.
 
 # Common Pitfalls to Avoid
 
@@ -112,6 +185,20 @@ my_module
 
 - `moon new my_project` - Create new project
 - `moon run cmd/main` - Run main package
+- `moon run - < hello.mbt` - Run code from stdin (useful for quick experiments)
+  Example:
+  ```bash
+  cat hello.mbt | moon run -
+  ```
+  This allows you to quickly test small snippets of MoonBit code without creating a full project.
+  It can also be used with heredoc syntax for multi-line snippets:
+  ```bash
+  moon run - <<'EOF'
+  fn main {
+    println("Hello, MoonBit!")
+  }
+  EOF
+  ```
 - `moon build` - Build project
   (`moon run` and `moon build` both support `--target`)
 - `moon check` - Type check without building, use it REGULARLY, it is fast
@@ -156,12 +243,12 @@ Use snapshot tests as it is easy to update when behavior changes.
   - It is encouraged to `inspect` or `@json.inspect` the whole return value of a function if
     the whole return value is not huge, this makes the test simple. You need `impl (Show|ToJson) for YourType` or `derive (Show, ToJson)`.
 - **Update workflow**: After changing code that affects output, run `moon test --update` to regenerate snapshots, then review the diffs in your test files (the `content=` parameter will be updated automatically).
+- **Validation order**: Follow the canonical sequence in `Agent Workflow` and `Fast Task Playbooks`.
 
 - Black-box by default: Call only public APIs via `@package.fn`. Use white-box tests only when private members matter.
 - Grouping: Combine related checks in one `test "..." { ... }` block for speed and clarity.
 - Panics: Name tests with prefix `test "panic ..." {...}`; if the call returns a value, wrap it with `ignore(...)` to silence warnings.
 - Errors: Use `try? f()` to get `Result[...]` and `inspect` it when a function may raise.
-- Verify: Run `moon test` (or `-u` to update snapshots) and `moon fmt` afterwards.
 
 ### Docstring tests
 
@@ -221,8 +308,8 @@ For project-local symbols and navigation, use:
 - `moon ide outline .` to scan a package,
 - `moon ide find-references <symbol>` to locate usages, and
 - `moon ide peek-def` for inline definition context and to locate toplevel symbols.
-- `moon ide hover sym -loc filename:line:col` to get type information at a specific location.
-- `moon ide rename <symbol> -new-name <new_name>` to rename a symbol project-wide.
+- `moon ide hover sym --loc filename:line:col` to get type information at a specific location.
+- `moon ide rename <symbol> <new_name> [--loc filename:line:col]` to rename a symbol project-wide. Prefer `--loc` when symbol names are ambiguous.
 These tools save tokens and are more precise than grepping (`grep` displays results in both definitions and call sites including comments too).
 
 ### `moon ide doc` for API Discovery
@@ -282,14 +369,14 @@ pub fn String::rev_find(String, StringView) -> Int?
   Returns ... omitted ...
 ````
 
-**Best practice**: When implementing a feature, start with `moon ide doc` queries to discover available APIs before writing code. This is faster and more accurate than searching through files.
+**Best practice**: Treat this section as command reference; execution order is defined in `Agent Workflow`.
 
-### `moon ide rename sym -new-name new_name [-loc filename:line:col]` example
+### `moon ide rename sym new_name [--loc filename:line:col]` example
 
 When the user asks: "Can you rename the function `compute_sum` to `calculate_sum`?"
 
 ```
-$ moon ide rename compute_sum -new-name calculate_sum -loc math_utils.mbt:2
+$ moon ide rename compute_sum calculate_sum --loc math_utils.mbt:2
 
 *** Begin Patch
 *** Update File: cmd/main/main.mbt
@@ -316,12 +403,12 @@ $ moon ide rename compute_sum -new-name calculate_sum -loc math_utils.mbt:2
 *** End Patch
 ```
 
-### `moon ide hover sym -loc filename:line:col` example
+### `moon ide hover sym --loc filename:line:col` example
 
 When the user asks: "What is the signature and docstring of `filter`? at line 14 of hover.mbt"
 
 ```
-$ moon ide hover  filter -loc hover.mbt:14
+$ moon ide hover  filter --loc hover.mbt:14
 test {
   let a: Array[Int] = [1]
   inspect(a.filter((x) => {x > 1}))
@@ -337,7 +424,7 @@ test {
 ```
 
 
-### `moon ide peek-def sym [-loc filename:line:col]` example
+### `moon ide peek-def sym [--loc filename:line:col]` example
 
 When the user asks: "Can you check if `Parser::read_u32_leb128` is implemented correctly?"
 you can run `moon ide peek-def Parser::read_u32_leb128` to get the definition context
@@ -353,7 +440,7 @@ L47:|  ...
 Now if you want to see the definition of the `Parser` struct, you can run:
 
 ```bash
-$ moon ide peek-def Parser -loc src/parse.mbt:46:4
+$ moon ide peek-def Parser --loc src/parse.mbt:46:4
 Definition found at file src/parse.mbt
   | ///|
 2 | priv struct Parser {
@@ -364,8 +451,8 @@ Definition found at file src/parse.mbt
   |
 ```
 
-For the `-loc` argument, the line number must be precise; the column can be approximate since
-the positonal argument `Parser` helps locate the position.
+For the `--loc` argument, the line number must be precise; the column can be approximate since
+the positional argument `Parser` helps locate the position.
 
 If the "sym" is a toplevel symbol, the location can be omitted:
 
@@ -436,19 +523,19 @@ moon update                   # Update package index
 }
 ```
 
-### Typical Package configuration (`moon.pkg.json`)
+### Typical Package configuration (`moon.pkg`)
 
 moon.pkg for simplicity
 ```
 import {
   "username/hello/liba",
-  "moonbitlang/x/encoding" as @libb
+  "moonbitlang/x/encoding" @libb
 }
 import {...} for "test"
 import {...} for "wbtest"
-options("is-main" : true)
+options("is-main" : true) // other options
 ```
-or moon.pkg.json 
+or moon.pkg.json (legacy mode)
 ```json
 {
   "is_main": true,                 // Creates executable when true
@@ -464,9 +551,9 @@ or moon.pkg.json
 }
 ```
 
-Packages are per directory and packages without a `moon.pkg.json` or `moon.pkg` file are not recognized.
+Packages are per directory and packages without a `moon.pkg` or `moon.pkg.json` file are not recognized.
 
-### Package Importing (used in moon.pkg.json)
+### Package Importing (used in moon.pkg)
 
 - **Import format**: `"module_name/package_path"`
 - **Usage**: `@alias.function()` to call imported functions
@@ -477,7 +564,7 @@ Packages are per directory and packages without a `moon.pkg.json` or `moon.pkg` 
 **Package Alias Rules**:
 
 - Import `"username/hello/liba"` → use `@liba.function()` (default alias is the last path segment)
-- Import with custom alias `{"path": "moonbitlang/x/encoding", "alias": "enc"}` → use `@enc.function()`
+- Import with custom alias `import { "moonbitlang/x/encoding" @enc}` → use `@enc.function()`
   (Note that this is unnecessary when the last path segment is identical to the alias name.)
 - In `_test.mbt` or `_wbtest.mbt` files, the package being tested is auto-imported
 
@@ -485,7 +572,7 @@ Example:
 
 ```mbt
 ///|
-/// In main.mbt after importing "username/hello/liba" in `moon.pkg.json`
+/// In main.mbt after importing "username/hello/liba" in `moon.pkg`
 fn main {
   println(@liba.hello()) // Calls hello() from liba package
 }
@@ -493,7 +580,7 @@ fn main {
 
 ### Using the Standard Library (moonbitlang/core)
 
-**MoonBit standard library (moonbitlang/core) packages were automatically imported**. MoonBit is transitioning to explicit imports—you will see a warning to add imports like `moonbitlang/core/strconv` to `moon.pkg.json` if you use them.
+**MoonBit standard library (moonbitlang/core) packages were automatically imported**. MoonBit is transitioning to explicit imports—you will see a warning to add imports like `moonbitlang/core/strconv` to `moon.pkg` if you use them.
 The module is always available without adding to dependencies.
 
 
@@ -502,17 +589,14 @@ The module is always available without adding to dependencies.
 To add a new package `fib` under `.`:
 
 1. Create directory: `./fib/`
-2. Add `./fib/moon.pkg.json`: `{}` -- Minimal valid moon.pkg.json
+2. Add `./fib/moon.pkg`
 3. Add `.mbt` files with your code
 4. Import in dependent packages:
 
-   ```json
-   {
-     "import": [
-        "username/hello/fib",
-        ...
-     ]
-   }
+   ```
+     import {
+      "username/hello/fib",
+     }
    ```
 
 For more advanced topics like `conditional compilation`, `link configuration`, `warning control`, and `pre-build commands`, see `references/advanced-moonbit-build.md`.
@@ -527,12 +611,11 @@ For more advanced topics like `conditional compilation`, `link configuration`, `
   If a blank line is desired within a block (enclosed by curly braces), add a comment line after the blank line (with or without comment text).
 - **Visibility**: `fn` is private by default; `pub` exposes read/construct as allowed; `pub(all)` allows external construction.
 - **Naming convention**: lower_snake for values/functions; UpperCamel for types/enums; enum variants start UpperCamel.
-- **Packages**: No `import` in code files; call via `@alias.fn`. Configure imports in `moon.pkg.json`.
+- **Packages**: No `import` in code files; call via `@alias.fn`. Configure imports in `moon.pkg`.
 - **Placeholders**: `...` is a valid placeholder in MoonBit code for incomplete implementations.
 - **Global values**: immutable by default and generally require type annotations.
 - **Garbage collection**: MoonBit has a GC, there is no lifetime annotation, there's no ownership system.
   Unlike Rust, like F#, `let mut` is only needed when you want to reassign a variable, not for mutating fields of a struct or elements of an array/map.
-- **Delimit top-level items with `///|` comments** so tools can split the file reliably.
 
 ## MoonBit Error Handling (Checked Errors)
 

@@ -1,3 +1,8 @@
+---
+name: typescript-practice
+description: TypeScript best practices for tooling, testing, and code style.
+---
+
 # TypeScript Best Practices
 
 ## Principles

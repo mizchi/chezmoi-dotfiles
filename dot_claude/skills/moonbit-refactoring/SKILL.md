@@ -76,10 +76,13 @@ fn reader_next(r : Reader) -> Char? { ... }
 let ch = reader_next(r)
 
 // After
+#as_free_fn(reader_next, deprecated="Use Reader::next instead")
 fn Reader::next(self : Reader) -> Char? { ... }
 let ch = r.next()
 ```
-
+To make the transition smooth, place `#as_free_fn(old_name, ...)` on the method; it emits a deprecated free function
+`old_name` that forwards to the method.
+Then you can check call sites and update them gradually by looking at warnings.
 Example (chaining):
 ```mbt nocheck
 buf..write_string("#\\")..write_char(ch)
@@ -130,7 +133,7 @@ let trees : Array[@pkga.Tree] = [Leaf(1), Node(left=Leaf(2), x=3, right=Leaf(4))
 - Pattern match strings directly; avoid converting to `Array[Char]`.
 - `String`/`StringView` indexing yields `UInt16` code units. Use `for ch in s` for Unicode-aware iteration.
 
-#### we prefer pattern matching over small functions
+#### We Prefer Pattern Matching Over Small Functions
 
 For example,
 ```mbt
@@ -139,7 +142,7 @@ For example,
    None => Iter::empty()
  }
 ```
-We can pattern match directly, it is more efficient and as readable:
+We can pattern match directly; it is often clearer and equally readable:
 ```mbt
  match gen_results {
    [value, ..] => Iter::singleton(value)
@@ -188,17 +191,52 @@ match token {
   None => ()
 }
 ```
+### Prefer Functional Loops to Mutation When Possible
 
-#### Prefer Range Loops for Simple Indexing
+- Use functional state update
+
+Example:
+```mbt
+// Before
+let mut a = 1
+let mut b = 2
+for i = 0 {
+  if i >= n {
+    break
+  }
+  a = a + b
+  b = b + a
+  continue i + 1
+}
+```
+
+```mbt nocheck
+for i = 0, a = 1, b = 2 {
+  if i >= n {
+    break a
+  }
+  continue i + 1, b, b + a
+}
+```
+- Functional loops also accept range loops, so they can be simplified:
+```mbt
+for _ in 0..<n; a = 1, b = 2 {
+  continue b, a + b
+} nobreak {
+  a
+}
+```
+
+### Prefer Range Loops to Simple Indexing
 - Use `for i in start..<end { ... }`, `for i in start..<=end { ... }`, `for i in large>..small`, or `for i in large>=..small` for simple index loops.
+- Use `for x in xs {...}` if xs is an iterator(e.g, Array) or `for i,x in xs {...}` if you also want to use the index
 - Keep functional-state `for` loops for algorithms that update state.
 
 Example:
 ```mbt
 // Before
-for i = 0; i < len; {
+for i = 0; i < len; i = i + 1{
   items.push(fill)
-  continue i + 1
 }
 
 // After
@@ -206,6 +244,7 @@ for i in 0..<len {
   items.push(fill)
 }
 ```
+
 
 ## Loop Specs (Dafny-Style Comments)
 - Add specs for functional-state loops.
@@ -230,7 +269,7 @@ where {
 
 ### Tests and Docs
 - Prefer black-box tests in `*_test.mbt` or `*.mbt.md`.
-- Add docstring tests with `mbt check` for public APIs.
+- Add docstring tests using `mbt check` fenced blocks for public APIs, and verify with `moon check && moon test`.
 
 Example:
 ```mbt
