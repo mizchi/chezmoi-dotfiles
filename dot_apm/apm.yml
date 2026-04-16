@@ -9,5 +9,7 @@ dependencies:
   - moonbitlang/moonbit-agent-guide/moonbit-c-binding
   - mizchi/moonbit-practice/skills/moonbit-practice
   - mizchi/flaker/skills/flaker-setup
+  - ast-grep/agent-skill/ast-grep
+  - mizchi/tui.mbt/skills/tuimbt-practice
   mcp: []
 scripts: {}
