@@ -1,0 +1,13 @@
+name: mz
+version: 1.0.0
+description: APM project for mz
+author: mizchi
+dependencies:
+  apm:
+  - moonbitlang/moonbit-agent-guide/moonbit-agent-guide
+  - moonbitlang/moonbit-agent-guide/moonbit-refactoring
+  - moonbitlang/moonbit-agent-guide/moonbit-c-binding
+  - mizchi/moonbit-practice/skills/moonbit-practice
+  - mizchi/flaker/skills/flaker-setup
+  mcp: []
+scripts: {}

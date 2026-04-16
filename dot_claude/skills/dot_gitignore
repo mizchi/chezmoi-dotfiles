@@ -1,0 +1,12 @@
+build
+moonbit-agent-guide-src
+
+# APM dependencies
+apm_modules/
+
+# APM-managed skills (installed via ~/.apm/apm.yml)
+moonbit-agent-guide/
+moonbit-refactoring/
+moonbit-c-binding/
+moonbit-practice/
+flaker-setup/
