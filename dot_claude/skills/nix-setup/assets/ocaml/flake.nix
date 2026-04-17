@@ -1,5 +1,5 @@
 {
-  description = "OCaml development environment (OCaml 5 + dune + LSP)";
+  description = "OCaml development environment (OCaml 5 + dune + LSP, project-local opam)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -28,8 +28,8 @@
             ocamlformat         # formatter
             utop                # REPL
           ] ++ [
-            # Package manager — keep it if you mix opam and nix, drop if you
-            # want pure-Nix project management.
+            # opam is still useful for pulling libraries nixpkgs doesn't ship.
+            # State is kept inside the project (see shellHook), not $HOME.
             pkgs.opam
 
             # Common tooling (included in every template)
@@ -39,9 +39,26 @@
           ];
 
           shellHook = ''
-            # dune discovers ocamlc via PATH; nothing to configure.
-            # If mixing with opam, `opam init --bare -n` once per machine
-            # (outside the shell).
+            # --- Project-local opam state -------------------------------------
+            # Keep $OPAMROOT under $PWD so each project has its own switch and
+            # the global ~/.opam is untouched. Mirrors the python-uv template
+            # pattern (UV_PROJECT_ENVIRONMENT=$PWD/.venv).
+            export OPAMROOT="$PWD/.opam"
+
+            # First-time bootstrap. `--disable-sandboxing` is required on macOS
+            # because opam's own sandbox clashes with Apple's; the outer Nix
+            # shell already provides isolation.
+            if [ ! -f "$OPAMROOT/config" ]; then
+              echo "[nix-shell] Initializing opam in $OPAMROOT (first-time setup)..."
+              opam init --bare --no-setup --yes --disable-sandboxing >&2
+
+              # Empty switch: no opam-managed ocaml, we use the nix-provided one.
+              # Libraries installed via `opam install` land here.
+              opam switch create default --empty --yes >&2
+            fi
+
+            # Make `opam` commands target the project switch automatically.
+            eval "$(opam env --switch=default --set-switch 2>/dev/null || true)"
           '';
         };
       });
