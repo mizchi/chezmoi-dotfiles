@@ -26,7 +26,8 @@ assets/
 ├── typescript/{flake.nix,.envrc}     # nodejs_24 + pnpm (top-level)
 ├── python-uv/{flake.nix,.envrc}      # python3 + uv
 ├── haskell/{flake.nix,.envrc}        # GHC + cabal + HLS + hlint + ormolu
-├── ocaml/{flake.nix,.envrc}          # OCaml 5 + dune + merlin + ocaml-lsp + utop
+├── ocaml/{flake.nix,.envrc,.gitignore}  # OCaml 5 + dune + merlin + ocaml-lsp + utop
+├── oxcaml/{flake.nix,.envrc,.gitignore} # Jane Street OxCaml (opam source build)
 └── home-manager/             # multi-host home-manager flake (macos + ccweb)
     ├── flake.nix
     ├── common.nix
@@ -150,10 +151,29 @@ echo 'use flake' > .envrc && direnv allow
 
 ### OCaml
 
-- `pkgs.ocamlPackages.{ocaml,dune_3,findlib,merlin,ocaml-lsp,ocamlformat,utop}` + 任意で `pkgs.opam`
+- `pkgs.ocamlPackages.{ocaml,dune_3,findlib,merlin,ocaml-lsp,ocamlformat,utop}` + `pkgs.opam`
 - nixpkgs 標準の OCaml 5.x 系。固定版は `pkgs.ocaml-ng.ocamlPackages_5_2` 等
-- **opam との住み分け**: 純 Nix なら `opam` を外し、`dune` + `.opam` ファイルから nix 式を生成する [opam-nix](https://github.com/tweag/opam-nix) を導入。混成運用なら `pkgs.opam` を残し、`opam init --bare -n` 初回のみ実行
-- `merlin` は `ocaml-lsp` の依存なので両方入れておくとエディタ連携が完全
+- **opam 管理**: shellHook が `OPAMROOT=$PWD/.opam` で state をプロジェクトローカルに閉じ込め、初回だけ `opam init` + `opam switch create default --empty` を自動実行。2 回目以降は `opam env` だけを `eval` する
+- 空スイッチを使うことで nix 提供の ocaml がそのまま使われ、compiler の二重管理を避ける
+- `.gitignore` に `.opam/` が含まれているので state を誤って commit しない
+- 追加ライブラリは `opam install <pkg>` で project-local に落ちる
+- `merlin` は `ocaml-lsp` の依存。両方入れておくとエディタ連携が完全
+
+### OxCaml (Jane Street のフォーク)
+
+- nixpkgs 未収録。公式推奨の「opam + ソースビルド」フローを踏襲し、nix 側は `opam` と build toolchain (`autoconf`, `automake`, `m4`, `pkg-config`, `gmp`, `libffi`) だけ提供
+- shellHook の初回実行で:
+  1. `$OPAMROOT/.opam` を作成
+  2. `oxcaml-dev` スイッチを empty で作成
+  3. `opam pin add -ny git+https://github.com/oxcaml/oxcaml` で upstream repo を pin
+  4. `opam switch set-invariant --packages oxcaml-dev` で invariant 設定
+- **実 compiler ビルドは自動実行しない**（5-20 分 / ~1 GB かかる）。ユーザが以下を明示実行:
+  ```bash
+  opam install oxcaml-dev
+  opam install dune merlin ocaml-lsp-server ocamlformat utop
+  ```
+- サポート: arm64 macOS / arm64 Linux / x86_64 Linux。x86_64 macOS は動くが非公式サポート
+- ocaml テンプレとは「同じ opam インフラを使うが別 switch」なので両テンプレを切り替えて使い分け可能
 
 ## `apm.nix` の仕組み
 
