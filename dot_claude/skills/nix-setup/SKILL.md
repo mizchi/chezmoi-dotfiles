@@ -24,7 +24,13 @@ assets/
 ├── moonbit/flake.nix         # moonbit-overlay + moon
 ├── rust/flake.nix            # rust-overlay + stable pinned + cargo-nextest/watch
 ├── typescript/flake.nix      # nodejs_24 + pnpm (top-level)
-└── python-uv/flake.nix       # python3 + uv
+├── python-uv/flake.nix       # python3 + uv
+└── home-manager/             # multi-host home-manager flake (macos + ccweb)
+    ├── flake.nix
+    ├── common.nix
+    ├── macos.nix             # aarch64-darwin: full desktop
+    ├── ccweb.nix             # x86_64-linux: minimal sandbox
+    └── .gitignore            # private.nix / *.secret.nix を除外
 ```
 
 全テンプレートに **`just`**, **`ast-grep`**, **`apm`** が入っている（共通運用ツール）。
@@ -180,6 +186,52 @@ my-cli = pkgs.buildNpmPackage {
   dontNpmBuild = true;   # pure CLI なら build なし
 };
 ```
+
+## home-manager (オプション)
+
+ユーザー環境全体（zsh / git / starship / CLI パッケージ）を Nix 式で宣言的に管理したい場合は `assets/home-manager/` を使う。chezmoi と併用する場合は `dot_zshrc` 等を `chezmoi forget` してから home-manager に所有権を移す。
+
+### ファイル構成
+
+- `flake.nix` — macOS desktop プロファイル (`macos`) と Claude Code web / ephemeral Linux 用 (`ccweb`) の 2 出力
+- `common.nix` — 全ホスト共通（zsh, git, starship, direnv, fzf, 基本 CLI）
+- `macos.nix` — aarch64-darwin 固有（helix, neovim 等の重量ツール）
+- `ccweb.nix` — x86_64-linux 最小構成（cold start < 2 分を目標に薄く保つ）
+
+### 使い方
+
+```bash
+# 1. コピー
+cp -r ~/.claude/skills/nix-setup/assets/home-manager ~/.config/home-manager
+cd ~/.config/home-manager
+
+# 2. flake.nix 先頭の `username` / `email` を書き換え
+$EDITOR flake.nix
+
+# 3. 適用
+home-manager switch --flake .#macos     # macOS
+home-manager switch --flake .#ccweb     # Claude Code web 等 Linux
+```
+
+### 公開 repo で管理するときの注意
+
+このテンプレは **秘密情報ゼロ** で書いてある（`username` / `email` は flake.nix の変数、ホスト名・トークン・known_hosts は含まない）。公開 GitHub に置いて OK。
+
+自分専用の秘密（SSH 設定、内部ホスト、API トークン）は以下のいずれかで:
+
+1. `./private.nix` を作って `imports` で読み込む。`.gitignore` で除外（テンプレに含めてある）
+2. `sops-nix` / `agenix` で暗号化したまま commit
+
+### Claude Code web での cold start 目安
+
+| 工程 | cache.nixos.org あり | 素 |
+|---|---|---|
+| `setup_nix.sh` | 20-40 秒 | 同左 |
+| flake 評価 + substitute | 30-90 秒 | 2-8 分 |
+| activation (symlink 展開) | 数秒 | 同左 |
+| **合計** | **1-2 分** | **4-12 分** |
+
+`ccweb.nix` に heavy パッケージを追加するほど cold start が延びる。共通部分は `common.nix` に寄せて、`ccweb.nix` は追加パッケージだけを書く方針を守る。
 
 ## direnv 連携
 
