@@ -25,6 +25,8 @@ assets/
 ├── rust/{flake.nix,.envrc}           # rust-overlay + stable pinned + cargo-nextest/watch
 ├── typescript/{flake.nix,.envrc}     # nodejs_24 + pnpm (top-level)
 ├── python-uv/{flake.nix,.envrc}      # python3 + uv
+├── haskell/{flake.nix,.envrc}        # GHC + cabal + HLS + hlint + ormolu
+├── ocaml/{flake.nix,.envrc}          # OCaml 5 + dune + merlin + ocaml-lsp + utop
 └── home-manager/             # multi-host home-manager flake (macos + ccweb)
     ├── flake.nix
     ├── common.nix
@@ -137,6 +139,21 @@ echo 'use flake' > .envrc && direnv allow
 - `pkgs.python3` + `pkgs.uv`
 - uv が自身で Python バージョン管理するので、nix 側はフォールバック扱い
 - `UV_PROJECT_ENVIRONMENT=$PWD/.venv`, `UV_CACHE_DIR=$PWD/.uv-cache` で $HOME を汚さない
+
+### Haskell
+
+- `pkgs.haskellPackages.{ghc,cabal-install,haskell-language-server,hlint,ormolu,ghcid}`
+- **nixpkgs 標準 (`haskellPackages`)** を使う構成。GHC バージョン固定は `pkgs.haskell.packages.ghc98` 等に差し替え
+- さらに厳密な再現性が必要なら `haskell.nix` (IOHK) を検討。ただし学習コストと複雑度は跳ね上がる
+- stack を使うなら `pkgs.stack` を追加し、`stack.yaml` の `resolver` で GHC を固定する方針に切替え
+- macOS では `stdenv.cc.cc.lib` が PATH にないので一部 FFI で困る → `buildInputs = [ pkgs.zlib ]` などを追記
+
+### OCaml
+
+- `pkgs.ocamlPackages.{ocaml,dune_3,findlib,merlin,ocaml-lsp,ocamlformat,utop}` + 任意で `pkgs.opam`
+- nixpkgs 標準の OCaml 5.x 系。固定版は `pkgs.ocaml-ng.ocamlPackages_5_2` 等
+- **opam との住み分け**: 純 Nix なら `opam` を外し、`dune` + `.opam` ファイルから nix 式を生成する [opam-nix](https://github.com/tweag/opam-nix) を導入。混成運用なら `pkgs.opam` を残し、`opam init --bare -n` 初回のみ実行
+- `merlin` は `ocaml-lsp` の依存なので両方入れておくとエディタ連携が完全
 
 ## `apm.nix` の仕組み
 
