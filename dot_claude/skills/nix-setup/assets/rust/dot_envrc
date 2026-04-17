@@ -1,0 +1,3 @@
+use flake
+# Reload devShell when the toolchain file changes, too.
+watch_file rust-toolchain.toml
