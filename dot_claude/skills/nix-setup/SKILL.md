@@ -1,0 +1,254 @@
+---
+name: nix-setup
+description: Set up Nix flakes for development environments. Includes ready-to-use flake.nix templates for MoonBit, Rust, TypeScript (with pnpm), Python+uv, each preloaded with just / ast-grep / apm. Covers installation on sandboxed environments like Claude Code web, the buildNpmPackage idiom, direnv integration, and GitHub Actions. Use when starting a new project with Nix, adding a flake to an existing project, bootstrapping Nix in a container or CI image, or troubleshooting a broken Nix setup.
+---
+
+# Nix Setup Skill
+
+Nix flake (flakes + `nix-command`) 前提の開発環境セットアップ リファレンス。各言語の雛形を `assets/` にまとめ、`cp` 一発で使えるようにしてある。
+
+## When to use
+
+- "nix の dev shell を作って" / "flake.nix 書いて"
+- "新しいプロジェクトに nix 入れたい"
+- "claude code web / コンテナで nix 使えるようにして"
+- `flake.nix` / `flake.lock` / `.envrc` に関する質問全般
+- `nix develop` / `nix build` のトラブル調査
+
+## What's in `assets/`
+
+```
+assets/
+├── setup_nix.sh              # 単一ユーザー Nix を sandbox 無効で入れるインストーラ (container / CCW 向け)
+├── apm.nix                   # microsoft/apm (Agent Package Manager) の Nix derivation
+├── moonbit/flake.nix         # moonbit-overlay + moon
+├── rust/flake.nix            # rust-overlay + stable pinned + cargo-nextest/watch
+├── typescript/flake.nix      # nodejs_24 + pnpm (top-level)
+└── python-uv/flake.nix       # python3 + uv
+```
+
+全テンプレートに **`just`**, **`ast-grep`**, **`apm`** が入っている（共通運用ツール）。
+
+テンプレは「プロジェクトルートに `flake.nix` + `apm.nix` を並置する」前提。言語側を差し替えたくなったら `apm.nix` は使い回せる。
+
+## Quick install
+
+### macOS / Linux (推奨)
+
+[Determinate Systems インストーラ](https://github.com/DeterminateSystems/nix-installer) を使う。`experimental-features = nix-command flakes` が最初から有効で、アンインストールも容易。
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+```
+
+### Claude Code web / 他の sandbox 環境
+
+systemd が使えない、root しかいない、ネスト化 namespace を禁じられた環境向けに `assets/setup_nix.sh` を使う。
+
+- `build-users-group =` (空) で single-user モード
+- `sandbox = false` で chroot を要求しない
+- `experimental-features = nix-command flakes` を `/etc/nix/nix.conf` と `$HOME/.config/nix/nix.conf` の両方に書く
+- `/etc/profile.d/nix.sh` を置いて以降の shell でも PATH が通る
+
+```bash
+cp ~/.claude/skills/nix-setup/assets/setup_nix.sh .
+bash setup_nix.sh
+. "$HOME/.nix-profile/etc/profile.d/nix.sh"  # 現在の shell にも反映
+nix --version
+```
+
+## Flake の最小骨格
+
+```nix
+{
+  description = "...";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+  };
+
+  outputs = { self, nixpkgs, flake-utils }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let pkgs = import nixpkgs { inherit system; };
+      in {
+        devShells.default = pkgs.mkShell {
+          packages = [ /* ... */ ];
+          shellHook = ''...'';
+        };
+      });
+}
+```
+
+`nix develop` で `devShells.default` に入る。`direnv` なら `.envrc` に `use flake` と書いて `direnv allow`。
+
+## 共通ツール (全テンプレートに入れている)
+
+| ツール | 用途 | なぜ毎回入れるか |
+|-------|------|----------------|
+| `just` | タスクランナー | `justfile` がプロジェクト標準 |
+| `ast-grep` | 構造検索・lint | grep では書けないルールを静的に強制 |
+| `apm`  | Agent 依存マネージャ | `apm.yml` でスキル/プロンプトを再現性ある形で配布 |
+
+## 言語別テンプレの使い方
+
+雛形の導入は **`flake.nix` + `apm.nix` をプロジェクトルートに並置** するだけ：
+
+```bash
+# 例: MoonBit プロジェクト
+cp ~/.claude/skills/nix-setup/assets/apm.nix .
+cp ~/.claude/skills/nix-setup/assets/moonbit/flake.nix .
+
+nix develop           # 初回はビルド
+# direnv 派なら:
+echo 'use flake' > .envrc && direnv allow
+```
+
+### MoonBit
+
+- `moonbit-overlay.packages.${system}.moon-patched_latest` を使う
+- **overlay は既知の動作バージョンにピン留めしている** (`50118f5c3c0298b5cb17cc6f1c346165801014c8`)。最新 HEAD は nixpkgs-unstable で broken 扱いのパッケージ (例: tcc) に依存することがあり、評価すら通らない時期がある。更新は動作確認してから
+- `moon.mod.json` があれば `moon update` を自動実行（初回のみ）
+- 参考: vibe-lang の `flake.nix`
+
+### Rust
+
+- `rust-overlay` で toolchain 管理
+- デフォルトは `stable.latest.default` + rust-analyzer / clippy / rustfmt
+- 特定バージョンにピン: `rust-bin.stable."1.91.0".default`
+- `rust-toolchain.toml` 連携: `rust-bin.fromRustupToolchainFile ./rust-toolchain.toml`
+- WASM ターゲット: `targets = [ "wasm32-wasip1" "wasm32-unknown-unknown" ]`
+
+### TypeScript
+
+- `nodejs_24` + `pkgs.pnpm` (top-level)
+- **`nodePackages.*` は 2025 年に nixpkgs から削除された** — `nodePackages.pnpm` は使えない
+- `PNPM_HOME` をプロジェクトローカル (`$PWD/.pnpm`) に向けて `$HOME` 汚染を避ける
+- npm / yarn に切り替える場合は `pkgs.pnpm` を外して `pkgs.nodejs_24` に付属する `npm` を使うか、`pkgs.yarn` を追加
+
+### Python + uv
+
+- `pkgs.python3` + `pkgs.uv`
+- uv が自身で Python バージョン管理するので、nix 側はフォールバック扱い
+- `UV_PROJECT_ENVIRONMENT=$PWD/.venv`, `UV_CACHE_DIR=$PWD/.uv-cache` で $HOME を汚さない
+
+## `apm.nix` の仕組み
+
+microsoft/apm は npm パッケージではなく **PyInstaller バンドルされたネイティブバイナリ**で配布される。
+
+- `_internal/` に Python 3.12 ランタイム + 依存ライブラリが同梱される
+- 単体 `apm` バイナリは `_internal` を同居ディレクトリで参照するので、切り出して使うことはできない
+- Linux では `autoPatchelfHook` で glibc / libstdc++ / zlib へのリンクを nix store 内のものに書き換え
+- `$out/libexec/apm/` に丸ごと配置し、`$out/bin/apm` はそこへの `makeWrapper` ラッパー
+- **`dontStrip = true` + `dontPatchELF = true` が必須** — PyInstaller は Mach-O / ELF の末尾に PKG アーカイブを append する。stdenv の既定 strip / patchelf は末尾を削るので、これを無効化しないと実行時に `Could not load PyInstaller's embedded PKG archive` で落ちる
+
+バージョン更新手順:
+
+```bash
+# 1. 新しいリリースの SHA256 を取得
+for a in darwin-arm64 darwin-x86_64 linux-arm64 linux-x86_64; do
+  curl -sSL "https://github.com/microsoft/apm/releases/download/vX.Y.Z/apm-${a}.tar.gz.sha256"
+done
+
+# 2. assets/apm.nix の version と sources.*.sha256 を差し替え
+```
+
+## npm ツールを Nix で扱う (2026 時点)
+
+`nodePackages.*` 廃止後の正道：
+
+1. **`pkgs.pnpm` / top-level packages** — まずこれ。nixpkgs 内にあれば使う。
+2. **`buildNpmPackage` + `importNpmLock`** — lockfile のある公式パッケージを自前でビルド。完全にピン留めされる。
+3. **`NPM_CONFIG_PREFIX="$PWD/.npm-global"` を shellHook で** — impure だがプロジェクトスコープ。hash 追従が重い場合の逃げ道。
+4. **`npx` / `pnpm dlx`** — たまにしか使わない CLI。
+
+**避けるべき**: `npm install -g` をそのまま shellHook に書く (ユーザー $HOME 汚染)、`nodePackages.*` を参照する (削除済み)、`dream2nix` / `node2nix` を新規採用する (メンテ停止気味)。
+
+### `buildNpmPackage` の骨格
+
+```nix
+my-cli = pkgs.buildNpmPackage {
+  pname = "my-cli";
+  version = "1.2.3";
+  src = pkgs.fetchFromGitHub {
+    owner = "owner"; repo = "my-cli"; rev = "v1.2.3";
+    hash = "sha256-...";
+  };
+  # lockfile ベースに切り替えるなら:
+  # npmDeps = pkgs.importNpmLock { npmRoot = ./.; };
+  npmDepsHash = "sha256-...";
+  dontNpmBuild = true;   # pure CLI なら build なし
+};
+```
+
+## direnv 連携
+
+```bash
+# .envrc
+use flake
+```
+
+```bash
+direnv allow
+```
+
+VS Code で使うなら `direnv.direnv` 拡張を入れると自動で `PATH` が反映される。
+
+## GitHub Actions
+
+```yaml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Run tests in dev shell
+        run: nix develop --command just test
+```
+
+`magic-nix-cache-action` は GitHub Actions の無料キャッシュに Nix store を載せる。私製プロジェクトなら十分。大規模なら Cachix / attic を検討。
+
+## トラブルシュート
+
+### `error: experimental Nix feature 'nix-command' is disabled`
+
+```bash
+mkdir -p ~/.config/nix
+echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf
+```
+
+### `error: cannot build on ... due to sandbox`
+
+container / rootless 環境では sandbox が効かない。`/etc/nix/nix.conf` に `sandbox = false` を書く（`setup_nix.sh` はこれをやる）。
+
+### `error: attribute 'pnpm' missing` / `nodePackages.pnpm` が見つからない
+
+nixpkgs `>= 24.11` では `nodePackages.*` が削除されている。`pkgs.pnpm` (top-level) を使う。
+
+### macOS で `/nix/store` の権限エラー
+
+Determinate インストーラが推奨。手動でやるなら Apple Silicon では APFS ボリューム分割が必要。
+
+### autoPatchelfHook 失敗 (`libstdc++.so.6 not found`)
+
+`buildInputs` に `stdenv.cc.cc.lib` を追加。`apm.nix` でやっているのと同じ対処。
+
+### flake input の更新
+
+```bash
+nix flake update              # 全 input
+nix flake update nixpkgs      # 個別
+```
+
+## 参考リンク
+
+- [Nix manual (flakes)](https://nix.dev/concepts/flakes.html)
+- [nixpkgs JavaScript section](https://github.com/NixOS/nixpkgs/blob/master/doc/languages-frameworks/javascript.section.md)
+- [DeterminateSystems/nix-installer](https://github.com/DeterminateSystems/nix-installer)
+- [oxalica/rust-overlay](https://github.com/oxalica/rust-overlay)
+- [moonbit-community/moonbit-overlay](https://github.com/moonbit-community/moonbit-overlay)
+- [microsoft/apm](https://github.com/microsoft/apm)
