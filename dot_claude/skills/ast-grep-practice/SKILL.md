@@ -21,6 +21,8 @@ cargo install ast-grep --locked
 brew install ast-grep
 ```
 
+**パッケージマネージャ選定**: プロジェクトの `package.json` に `packageManager` が設定されていればそれに従う（pnpm / yarn 等）。無ければ npm でローカル install する。CI も同じツールに揃える（混在させると lockfile / バイナリ参照経路が割れる）。グローバル install は dev マシンだけにし、CI と repo 内 script は必ずローカル参照にする。
+
 ## クイックスタート
 
 最小構成で動作確認する:
@@ -176,6 +178,17 @@ process.env.NODE_ENV
 
 ## fix (自動修正)
 
+### fix を付けるかどうかの判断
+
+`fix` は便利だが、付けると自動適用されるので意味論を変える危険がある。次の場合は **付けない**（検出のみにする）:
+
+- 書き換えで型安全性が変わる（例: `as any` → `as unknown` は型推論結果が変わる）
+- 副作用や評価順序が変わる可能性（短絡評価の有無、例外発生タイミング）
+- 文脈依存で正しい置換が一意に決まらない（API 移行の引数順入れ替え等、レビューが必須）
+- 削除系で、削除対象が同一文の他の式と絡んでいる
+
+迷ったら fix なしで note に「手動移行手順」を書く。fix を付けるのは「全置換しても安全」と確信できる場合に限る。
+
 ### 基本
 
 ```yaml
@@ -194,7 +207,21 @@ rule:
 fix: ''
 ```
 
-`fix: ''` でマッチしたノードを削除する。ただし空行が残ることがある。末尾カンマや区切り文字も消したい場合は `expandEnd` を使う。
+`fix: ''` でマッチしたノードを削除する。ただし空行が残ることがある。**ステートメント終端 `;` や末尾カンマも一緒に消したい場合は必ず `expandEnd` を併用する**（後述「範囲拡張」）。空行が残るのが許容範囲なら expandEnd 不要。判断基準: 削除後にフォーマッタ（Prettier 等）が走るプロジェクトなら空行は自動整理されるので expandEnd 不要、走らないなら expandEnd 推奨。
+
+### `any:` で複数パターンを束ねるときの fix
+
+`any:` 配下の各分岐で **同一の fix テンプレート** が使えるなら 1 ルールに統合して良い:
+
+```yaml
+rule:
+  any:
+    - pattern: $ARR.filter($P).length === 0
+    - pattern: $ARR.filter($P).length == 0
+fix: '!$ARR.some($P)'   # 両分岐で共通のメタ変数 + 同一テンプレート
+```
+
+**分岐ごとに fix が異なる場合は必ずルールを分割する**（`any:` 内で分岐ごとの fix は書けない）。例: `=== 0` → `!some()`、`!== 0` → `some()` は別ルールにする。同じ目的でもルール分割は許容される（id を `*-empty` / `*-nonempty` などで揃えると見通しが良い）。
 
 ### 複数行
 
@@ -231,6 +258,13 @@ ast-grep run --pattern 'oldFunc($$$ARGS)' --rewrite 'newFunc($$$ARGS)' --lang ty
 ## constraints
 
 メタ変数に追加条件を付ける。`$ARG` のみ対象（`$$$ARGS` は不可）。ルールマッチ後にフィルタされる。
+
+**constraints と構造制約 (has/inside/not) の使い分け**:
+- **メタ変数の中身** に条件を付けたい → `constraints`（例: `$METHOD` が `get` / `set` / `delete` のいずれか）
+- **パターンの外側・内側の構造** に条件を付けたい → `has` / `inside` / `not` / `precedes` / `follows`（例: 特定の親要素の内側、特定の子要素を持つ）
+- パターン自体に具体的リテラルを書ける場合はそれが最もシンプル（`pattern: new Set($X)` で Set 存在を担保）
+
+`rule` の直下に `pattern` と `has` / `not` を併記すると **AND 評価** される（pattern にマッチ かつ has が真）。`pattern` 単独で表現しきれない構造制約はこの形で付け足す。
 
 ```yaml
 rule:
@@ -341,6 +375,10 @@ severity: warning
 
 ## テスト
 
+テストには 2 系統ある。混同しない:
+- **分類テスト** (`test --skip-snapshot-tests`): `valid` / `invalid` に並べたコードが正しく分類されるかだけを確認。CI で回すのはこちら。
+- **スナップショットテスト** (`test` / `test -U`): invalid コードへのマッチ位置や fix 適用結果を snapshot として固定し、回帰を検出。初回は `-U` で生成、以降は人間レビュー。CI 前に一度通す。
+
 ### テストファイル形式
 
 テストファイル内の `id` がルールファイルの `id` と一致している必要がある。ファイル名は自由（慣例は `{rule-id}-test.yml`）。
@@ -398,114 +436,58 @@ check: format-check typecheck ast-grep-lint test
 
 ### GitHub Actions
 
+dev 環境とツールを揃える（プロジェクトで pnpm を使うなら CI も pnpm、npm なら npm）:
+
 ```yaml
-- name: Install ast-grep
-  run: cargo install ast-grep --locked
-  # or: npm install -g @ast-grep/cli
+- uses: actions/setup-node@v4
+  with: { node-version: 24, cache: npm }   # pnpm プロジェクトなら pnpm/action-setup@v4 + cache: pnpm
 
-- name: Lint with ast-grep
-  run: ast-grep scan
+- run: npm ci   # pnpm なら pnpm install --frozen-lockfile
 
-- name: Test ast-grep rules
-  run: ast-grep test
+- name: ast-grep rule tests
+  run: npx ast-grep test --skip-snapshot-tests
+
+- name: ast-grep scan
+  run: npx ast-grep scan --error
 ```
 
-`ast-grep scan` は violation があると非ゼロで終了する。`--format json` で JSON 出力。
+**severity と終了コード**:
+- `ast-grep scan` はデフォルトで `error` severity が 1 件でもあれば非ゼロ終了
+- `--error` を付けると `warning` / `hint` でも非ゼロ終了させられる（CI で warning も落としたい場合）
+- `--error=error` のように severity を指定して段階的に厳しくすることも可能
+- `--format json` で構造化出力（別ツール連携用）
 
 ## kind 名の調べ方
 
 kind 名は言語の Tree-sitter grammar に依存する。
 
 ```bash
-# CST ダンプ（全ノード表示）
-ast-grep run --pattern 'YOUR_CODE_HERE' --lang typescript --debug-query=cst
+# AST ダンプ（名前付きノードのみ、ルール記述に使う）
+ast-grep run --pattern 'YOUR_CODE' --lang typescript --debug-query=ast
 
-# AST ダンプ（名前付きノードのみ）
-ast-grep run --pattern 'YOUR_CODE_HERE' --lang typescript --debug-query=ast
+# CST ダンプ（全ノード、anonymous トークン含む）
+ast-grep run --pattern 'YOUR_CODE' --lang typescript --debug-query=cst
 ```
 
-### TypeScript/JavaScript でよく使う kind
-
-| kind | 対応するコード |
-|------|---------------|
-| `function_declaration` | `function foo() {}` |
-| `arrow_function` | `() => {}` |
-| `call_expression` | `foo()` |
-| `member_expression` | `obj.prop` |
-| `variable_declarator` | `const x = 1` の `x = 1` 部分 |
-| `lexical_declaration` | `const x = 1` 全体 |
-| `type_alias_declaration` | `type Foo = ...` |
-| `interface_declaration` | `interface Foo {}` |
-| `import_statement` | `import ... from '...'` |
-| `export_statement` | `export ...` |
-| `try_statement` | `try { ... } catch { ... }` |
-| `if_statement` | `if (...) { ... }` |
-| `class_declaration` | `class Foo {}` |
-| `method_definition` | クラス内メソッド |
-| `pair` | `{ key: value }` の 1 ペア |
-| `template_string` | `` `...` `` |
-
-### Rust でよく使う kind
-
-| kind | 対応するコード |
-|------|---------------|
-| `function_item` | `fn foo() {}` |
-| `struct_item` | `struct Foo {}` |
-| `enum_item` | `enum Foo {}` |
-| `impl_item` | `impl Foo {}` |
-| `trait_item` | `trait Foo {}` |
-| `use_declaration` | `use std::io;` |
-| `let_declaration` | `let x = 1;` |
-| `const_item` | `const X: i32 = 1;` |
-| `match_expression` | `match x { ... }` |
-| `if_expression` | `if x { ... }` |
-| `call_expression` | `foo()` |
-| `field_expression` | `obj.field` |
-| `macro_invocation` | `println!(...)` |
-| `closure_expression` | `\|x\| x + 1` |
-| `unsafe_block` | `unsafe { ... }` |
-| `async_block` | `async { ... }` |
-| `for_expression` | `for x in iter { ... }` |
-| `mod_item` | `mod foo { ... }` |
-
-### Go でよく使う kind
-
-| kind | 対応するコード |
-|------|---------------|
-| `function_declaration` | `func foo() {}` |
-| `method_declaration` | `func (r Recv) foo() {}` |
-| `type_declaration` | `type Foo struct {}` |
-| `struct_type` | `struct { ... }` |
-| `interface_type` | `interface { ... }` |
-| `call_expression` | `foo()` |
-| `selector_expression` | `obj.Method` |
-| `short_var_declaration` | `x := 1` |
-| `var_declaration` | `var x int` |
-| `const_declaration` | `const x = 1` |
-| `import_declaration` | `import "fmt"` |
-| `if_statement` | `if x { ... }` |
-| `for_statement` | `for i := 0; ... { ... }` |
-| `return_statement` | `return x` |
-| `defer_statement` | `defer f()` |
-| `go_statement` | `go f()` |
-| `channel_type` | `chan int` |
-
-### Python でよく使う kind
-
-| kind | 対応するコード |
-|------|---------------|
-| `function_definition` | `def foo():` |
-| `class_definition` | `class Foo:` |
-| `call` | `foo()` |
-| `attribute` | `obj.attr` |
-| `import_statement` | `import ...` |
-| `import_from_statement` | `from ... import ...` |
-| `if_statement` | `if ...:` |
-| `try_statement` | `try: ...` |
-| `with_statement` | `with ...:` |
-| `decorator` | `@decorator` |
+言語別の頻出 kind カタログは [references/kind-catalog.md](references/kind-catalog.md) 参照（TypeScript / Rust / Go / Python を網羅）。
 
 ## 実践的なルール例
+
+### TypeScript: `as any` キャストの禁止（検出のみ、fix 無し）
+
+```yaml
+id: no-as-any
+language: TypeScript
+severity: error
+rule:
+  pattern: $EXPR as any
+message: as any は型システムを無効化する。as unknown 経由か型ガードを使う。
+note: |
+  自動 fix を付けない理由: `as any` → `as unknown` への機械置換は型推論結果が
+  変わるため、呼び出し側で新たなコンパイルエラーを生む。検出のみにして手動移行。
+```
+
+`as any` のように「型アサーション」にマッチさせる場合、`$EXPR as any` が `as_expression` ノードとして動く。`$EXPR` がマッチするのは左辺全体なので、`JSON.parse(raw) as any` にも `(value as any)` にもマッチする。
 
 ### TypeScript: deprecated API の書き換え
 
@@ -679,6 +661,15 @@ files:
 ```
 
 ## References
+
+### 本 skill 内の詳細
+
+- [references/rule-yaml.md](references/rule-yaml.md) — ルール YAML 全フィールド・評価順序・メタ変数束縛スコープ・`any:` + fix の統合/分割・`$$$ARGS` 空マッチ等
+- [references/testing.md](references/testing.md) — 分類テスト vs スナップショット、複数行コード記法、snapshot 運用
+- [references/cli.md](references/cli.md) — サブコマンド・フラグ全般、`--error` / exit code / `--format json`
+- [references/kind-catalog.md](references/kind-catalog.md) — 言語別 kind カタログ（TypeScript / Rust / Go / Python）
+
+### 公式
 
 - ast-grep docs: https://ast-grep.github.io/
 - Rule reference: https://ast-grep.github.io/reference/yaml.html
