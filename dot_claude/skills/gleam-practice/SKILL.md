@@ -193,32 +193,163 @@ web 層の原則:
 
 基本は `pure state` と `server` の 2 層。
 
-```gleam
-// pure state
-pub opaque type State
+**重要**: `gleam_otp` は Erlang `gen_server` を静的型付けで包んだライブラリで、**API は gen_server と非互換**。`:gen_server.call` / `:gen_server.cast` を直接呼ばない。`Subject` と `actor.Message` の世界で完結させる。
 
-pub fn new() -> State
-pub fn apply(state: State, command: Command) -> Result(State, Error)
-```
+### pure state
 
 ```gleam
-// actor wrapper
-pub opaque type Server
-pub opaque type ServerName
+pub opaque type State {
+  State(hits: Dict(String, Int), limit: Int)
+}
 
-pub fn start() -> Result(Server, actor.StartError)
-pub fn start_named(name: ServerName) -> Result(Server, actor.StartError)
-pub fn from_name(name: ServerName) -> Server
-pub fn supervised(name: ServerName) -> supervision.ChildSpecification(Server)
+pub fn new(limit: Int) -> State {
+  State(hits: dict.new(), limit: limit)
+}
+
+pub fn incr(state: State, key: String) -> #(State, Bool) {
+  let n = dict.get(state.hits, key) |> result.unwrap(0) + 1
+  #(State(..state, hits: dict.insert(state.hits, key, n)), n <= state.limit)
+}
 ```
 
-指針:
+### actor wrapper（具体例）
 
-- `Server` は opaque にする
-- HTTP から state を直接触らない
+```gleam
+import gleam/erlang/process.{type Subject}
+import gleam/otp/actor
+import gleam/otp/supervision
+
+pub opaque type Message {
+  Check(key: String, reply_to: Subject(Bool))
+  Reset(key: String)
+}
+
+pub opaque type Server { Server(subject: Subject(Message)) }
+
+pub fn start(limit: Int) -> Result(Server, actor.StartError) {
+  actor.new(new(limit))
+  |> actor.on_message(handle)
+  |> actor.start
+  |> result.map(fn(started) { Server(subject: started.data) })
+}
+
+pub fn supervised(limit: Int) -> supervision.ChildSpecification(Server) {
+  supervision.worker(fn() { start(limit) })
+}
+
+fn handle(state: State, msg: Message) -> actor.Next(State, Message) {
+  case msg {
+    Check(key, reply_to) -> {
+      let #(next, ok) = incr(state, key)
+      process.send(reply_to, ok)
+      actor.continue(next)
+    }
+    Reset(key) ->
+      actor.continue(State(..state, hits: dict.delete(state.hits, key)))
+  }
+}
+
+// sync call pattern: 呼び出し側が reply subject を作って渡す
+pub fn check(s: Server, key: String) -> Bool {
+  let reply = process.new_subject()
+  process.send(s.subject, Check(key, reply))
+  process.receive(reply, 1000) |> result.unwrap(False)
+}
+
+pub fn reset(s: Server, key: String) -> Nil {
+  process.send(s.subject, Reset(key))
+}
+```
+
+### Supervision tree の 3 種
+
+`gleam_otp` は supervisor を用途別に 3 モジュールに分けている。
+
+| 種類 | モジュール | いつ使う |
+|---|---|---|
+| **static** | `gleam/otp/static_supervisor` | 起動時に子プロセスが確定（DB pool、設定済み actor）。再起動だけを扱う |
+| **factory** | `gleam/otp/supervisor_factory` | 同一 spec を動的に ID 付きで増やす（session per user 等）。`start_child(name, arg)` |
+| **dynamic** | `gleam/otp/supervisor_dynamic` | 任意の spec を動的に追加・削除（job worker pool 等）。`start_child(name, spec)` / `terminate_child` |
+
+実際の API 名はバージョンで揺れる。`gleam_otp` 公式 hex docs で都度確認。以下は v0.16+ 前提の雛形:
+
+```gleam
+// src/my_app/app.gleam
+import gleam/otp/static_supervisor as sup
+import my_app/db_pool
+import my_app/rate_limiter
+
+pub fn start() -> Result(Nil, actor.StartError) {
+  sup.new(sup.OneForOne)
+  |> sup.restart_tolerance(intensity: 3, period: 60)  // 60s で 3 回までの再起動を許容
+  |> sup.add(db_pool.supervised())                    // static child
+  |> sup.add(rate_limiter.supervised(limit: 100))     // static child
+  |> sup.start
+  |> result.replace(Nil)
+}
+```
+
+restart strategy の選び方:
+- **`Permanent`**: 落ちたら必ず再起動（DB pool、認証サーバーなど基盤）
+- **`Transient`**: 正常終了は OK、異常終了のみ再起動（job worker）
+- **`Temporary`**: 再起動しない（一度だけの処理）
+
+`restart_intensity`（デフォルト 3）と `period`（デフォルト 5 秒）を超えた場合、supervisor 自身が落ちて上位に伝播する。
+
+### 指針
+
+- `Server` は opaque にする（外部から Subject を直接操作させない）
+- HTTP から state を直接触らない（actor 経由）
 - supervision tree は `app.gleam` に集める
-- restart strategy はまず `OneForOne`
+- restart strategy はまず `OneForOne`、最上位は `static_supervisor`
 - test しやすくするため named actor を使う
+- supervisor の種類を使い分ける: `static`（固定）、`factory`（同 spec 動的増）、`dynamic`（任意 spec 動的）
+
+## JSON Codec (`gleam/dynamic/decode` + `gleam/json`)
+
+Gleam の JSON API はバージョンで変わりやすい（`gleam_json` v2+）。現行の idiomatic な書き方:
+
+### Decode
+
+```gleam
+import gleam/dynamic/decode
+import gleam/json
+
+pub type NewTodo { NewTodo(title: String, priority: Int) }
+
+pub fn new_todo_decoder() -> decode.Decoder(NewTodo) {
+  use title <- decode.field("title", decode.string)
+  use priority <- decode.optional_field("priority", 0, decode.int)
+  decode.success(NewTodo(title:, priority:))
+}
+
+// Wisp handler 内で
+case decode.run(body, new_todo_decoder()) {
+  Ok(nt) -> // ... use nt
+  Error(errors) -> wisp.bad_request("invalid json: " <> string.inspect(errors))
+}
+```
+
+`decode.field` は必須、`decode.optional_field(key, default, decoder)` はオプション。nested object は `decode.field("user", user_decoder())`。
+
+### Encode
+
+```gleam
+pub fn encode_todo(t: Todo) -> json.Json {
+  json.object([
+    #("id", json.int(t.id)),
+    #("title", json.string(t.title)),
+    #("done", json.bool(t.done)),
+  ])
+}
+
+// Wisp で返す
+wisp.json_response(json.to_string_tree(encode_todo(t)), 201)
+```
+
+リスト: `json.array(items, of: encode_todo)`。
+
+**LSP Code Action**: `gleam-language-server` v1.2+ には「Generate JSON encoder/decoder」機能がある。`Todo` 型にカーソルを置いて Code Action を呼ぶと `encode_todo` / `todo_decoder` を自動生成。手書きより正確。
 
 ## justfile Template
 
