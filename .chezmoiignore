@@ -2,3 +2,9 @@ node_modules
 **/node_modules
 package-lock.json
 **/.DS_Store
+
+# Security-sensitive skills kept out of public dotfiles.
+# npm-release contains GitHub App IDs, release automation details,
+# and distribution scripts that are useful for attackers targeting the
+# release pipeline. Keep it local-only.
+.claude/skills/npm-release/**
