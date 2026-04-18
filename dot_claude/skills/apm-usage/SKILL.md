@@ -76,9 +76,51 @@ dependencies:
 scripts: {}
 ```
 
+### `scripts:` の実例
+
+`scripts:` は name → command のマップ。`apm install` 後の setup、開発中のワンショット処理を登録する:
+
+```yaml
+scripts:
+  postinstall: "echo 'skills installed; restart Claude Code to pick them up'"
+  verify: "ls -1 .claude/skills | sort"
+  audit: "apm audit"
+```
+
+呼び出し: `apm run <name>`（例: `apm run verify`）。`postinstall` は `apm install` 成功時に自動実行される（hook）。ワンショット処理（例: `apm run audit`）は明示的に呼ぶ。
+
+### lockfile (`apm.lock.yaml`) の運用
+
+`apm install` は `apm.lock.yaml` を生成する。再現性を担保するため:
+
+- **project スコープ**: `apm.lock.yaml` を **commit** する（チーム間で同じ skill version を解決するため）。`node_modules` の package-lock と同じ発想
+- **global スコープ**: `~/.apm/apm.lock.yaml` は chezmoi で同期すると新マシンで同じ version が入る
+- CI / 新マシンでは `apm install --frozen-lockfile` を使って drift を防ぐ（lockfile が manifest と一致しなければ fail）
+- lockfile を意図的に更新したいときだけ `apm install --update`
+
+### chezmoi との共存
+
+chezmoi で dotfiles を管理している場合、APM との境界:
+
+| path | chezmoi | APM |
+|---|---|---|
+| `~/.apm/apm.yml` | 管理（source にコピー） | 読む |
+| `~/.apm/apm.lock.yaml` | 管理（新マシン再現性のため） | 生成 |
+| `~/.apm/apm_modules/` | ignore（大きいキャッシュ） | 管理 |
+| `~/.claude/skills/<name>/` | ignore（APM-managed は chezmoi 対象外） | 展開先 |
+
+chezmoi 側の `.chezmoiignore` に次を追加:
+
+```
+.apm/apm_modules
+.claude/skills/<apm-managed-name>
+```
+
+自作 skill（`chezmoi add` で source にコピーしたもの）とは名前が衝突しないよう注意。衝突時は APM が install 時に上書きする。詳細は `chezmoi-management` skill を参照。
+
 ## Creating skills in a repository
 
-Follow the [agentskills.io](https://agentskills.io/specification) open standard.
+Follow the [agentskills.io](https://agentskills.io/specification) open standard. Publishing-focused guide (repo layout, tag/release, dependency declaration, verification checklist) is in [references/publishing.md](references/publishing.md).
 
 ### Directory structure
 
