@@ -40,6 +40,8 @@ assets/
 
 テンプレは「プロジェクトルートに `flake.nix` + `apm.nix` を並置する」前提。言語側を差し替えたくなったら `apm.nix` は使い回せる。
 
+**`apm.nix` はオプション**: APM skill を使わないプロジェクトなら削除して良い。その場合 `flake.nix` から `apm = import ./apm.nix ...` と `packages` 内の `apm` を両方消す。`just` / `ast-grep` だけ残したいならそのまま。
+
 ## Quick install
 
 ### macOS / Linux (推奨)
@@ -269,6 +271,84 @@ home-manager switch --flake .#ccweb     # Claude Code web 等 Linux
 | **合計** | **1-2 分** | **4-12 分** |
 
 `ccweb.nix` に heavy パッケージを追加するほど cold start が延びる。共通部分は `common.nix` に寄せて、`ccweb.nix` は追加パッケージだけを書く方針を守る。
+
+## 既存 repo への導入
+
+新規プロジェクト (`cp assets/<lang>/flake.nix .`) と違い、既存 repo では以下の罠がある。
+
+### 1. `cp` 前に既存ファイルを退避
+
+テンプレの `cp` はそのまま既存 `.envrc` / `flake.nix` / `.gitignore` を上書きする。退避 → マージの手順を踏む:
+
+```bash
+# 既存を保存
+[ -f .envrc ] && cp .envrc .envrc.pre-nix
+
+# テンプレを展開
+cp ~/.claude/skills/nix-setup/assets/typescript/flake.nix .
+cp ~/.claude/skills/nix-setup/assets/typescript/.envrc .
+
+# 既存の export などを復元
+# .envrc.pre-nix を参照しつつ手でマージ
+```
+
+### 2. `.envrc` のマージ方針
+
+既存 `.envrc` に `export DATABASE_URL=...` 等があるなら、`use flake` を **先頭** に置いて既存 `export` を後ろに残す（devShell の env を土台に、repo 固有値で上書き）。
+
+```sh
+# 正しい順序
+use flake                              # まず devShell を起動
+dotenv_if_exists .env.local            # secrets
+export DATABASE_URL="postgres://..."   # 既存 export を温存
+```
+
+反対に `export` を先に書くと `use flake` で上書きされる可能性がある。
+
+### 3. lockfile 移行 (npm → pnpm 等)
+
+`package-lock.json` と `pnpm-lock.yaml` の混在は不定動作の元。移行するなら **別 PR** にして Nix 化と分ける:
+
+```bash
+git switch -c chore/pnpm-migration
+rm package-lock.json && rm -rf node_modules
+corepack enable && corepack prepare pnpm@10 --activate
+pnpm install                          # 再解決
+pnpm why <critical-dep>               # major drift 確認
+pnpm build && pnpm test               # 動作確認
+git add pnpm-lock.yaml package.json && git rm package-lock.json
+git commit -m "chore: migrate npm -> pnpm lockfile"
+```
+
+rebase 中に `pnpm-lock.yaml` が衝突したら **手で直さず** `pnpm install` で再生成 → `git add`。
+
+### 4. CI の `actions/setup-node` 置換
+
+既存 ci.yml の Node 関連ステップを Nix 化差分で書き換える:
+
+```diff
+-      - uses: actions/setup-node@v4
+-        with:
+-          node-version: 24
+-          cache: pnpm
+-      - run: pnpm install --frozen-lockfile
+-      - run: pnpm test
++      - uses: DeterminateSystems/nix-installer-action@main
++      - uses: DeterminateSystems/magic-nix-cache-action@main
++      - run: nix develop --command just ci
+```
+
+`just ci` 側で `pnpm install --frozen-lockfile && pnpm build && pnpm test` を定義（justfile に移す）。pnpm store は別途 `actions/cache` で保持するのが cold-build を避けるコツ。
+
+### 5. monorepo の扱い
+
+`pnpm-workspace.yaml` / turborepo / Nx を使う monorepo は root に `flake.nix` を 1 つ置けば全 workspace で `nix develop` が共有される。各 package 固有の dev tool は `package.json` の devDependencies に留め、nix は言語ランタイム + 横断ツール (just / ast-grep) に絞る。
+
+### 6. 既存 `.gitignore` との統合
+
+`assets/ocaml/.gitignore` や `assets/oxcaml/.gitignore` をコピーすると既存の `.gitignore` を上書きする。マージ必要。
+- `result` / `result-*` (Nix ビルド成果) を必ず追加
+- `.direnv/` (nix-direnv キャッシュ) を追加
 
 ## direnv 連携
 

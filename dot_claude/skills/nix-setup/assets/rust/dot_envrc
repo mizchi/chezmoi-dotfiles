@@ -1,3 +1,4 @@
 use flake
-# Reload devShell when the toolchain file changes, too.
 watch_file rust-toolchain.toml
+# Load local overrides (API keys etc.) when present. Never commit .env.local.
+dotenv_if_exists .env.local
