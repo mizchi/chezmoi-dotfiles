@@ -89,6 +89,45 @@ dotenvx run -f .env.production -- npm start
 dotenvx run -f .env.development -f .env.local -- npm run dev
 ```
 
+## Key ローテーション
+
+private key が漏洩疑いになったとき、または定期的な rotation 時の手順。`dotenvx rotate` 専用コマンドは 2026/04 時点で存在しないため、decrypt → 新 key で encrypt を明示的に行う。
+
+**順序が最重要**: CI secret を **先に** 新 key に更新してから、新暗号文を merge する。逆だと旧 key で新暗号文を復号しようとして prod が落ちる。
+
+```bash
+# 1. 作業ブランチ + 旧 key 退避
+git switch -c chore/rotate-prod-dotenv-key
+set +o history
+OLD_PRIV="$DOTENV_PRIVATE_KEY_PRODUCTION"
+
+# 2. 旧 key で復号（平文に戻す）
+DOTENV_PRIVATE_KEY_PRODUCTION="$OLD_PRIV" dotenvx decrypt -f .env.production
+
+# 3. 既存 PUBLIC_KEY を削除してから再 encrypt（新 key ペアが生成される）
+sed -i.bak '/^DOTENV_PUBLIC_KEY_PRODUCTION=/d' .env.production
+dotenvx encrypt -f .env.production
+NEW_PRIV=$(dotenvx get DOTENV_PRIVATE_KEY_PRODUCTION -f .env.keys)
+
+# 4. CI secret を新 key に更新（merge より先）
+gh secret set DOTENV_PRIVATE_KEY_PRODUCTION --body "$NEW_PRIV" --env production
+
+# 5. 新暗号文を commit + merge + deploy
+git add .env.production && git commit -m "chore: rotate production dotenv key"
+git push && gh pr create --fill && gh pr merge --squash --auto
+
+# 6. クリーンアップ
+unset OLD_PRIV; set -o history
+rm .env.production.bak
+```
+
+**漏洩時の追加対応**:
+- git 履歴に残る旧暗号文は過去の旧 key で復号可能なまま。key ローテだけでは不十分
+- 暗号化されていた値自体（DB password、API key 等）も **並行して再発行** 必須
+- 履歴からの完全除去が必要なら `git filter-repo` を使うが、force push 影響が大きいので慎重に
+
+**ダウンタイム回避**: 一時的に `DOTENV_PRIVATE_KEY_PRODUCTION` と `DOTENV_PRIVATE_KEY_PRODUCTION_NEW` を並行保持し、デプロイ成功後に旧を削除する blue-green 運用も可。
+
 ## GitHub Actions
 
 curl でインストール。完全な例は `assets/gh_action_example.yaml` を参照。
