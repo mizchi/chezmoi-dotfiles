@@ -1,7 +1,12 @@
 {
   "private": true,
+  "dependencies": {
+    "@bytecodealliance/preview2-shim": "0.17.7",
+    "@types/node": "^25.2.0"
+  },
   "devDependencies": {
     "@secretlint/secretlint-rule-preset-recommend": "^9.1.0",
+    "playwright": "^1.58.2",
     "secretlint": "^9.1.0"
   }
 }

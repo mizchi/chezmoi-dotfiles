@@ -34,3 +34,15 @@ auto-format = true
 [[grammar]]
 name = "moonbit"
 source = { git = "https://github.com/moonbitlang/tree-sitter-moonbit", rev = "main" }
+
+[[language]]
+name = "vibe"
+scope = "source.vibe"
+injection-regex = "vibe"
+file-types = ["vibe"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "vibe"
+source = { path = "/Users/mz/ghq/github.com/mizchi/vibe-lang/integrations/treesitter-vibe" }

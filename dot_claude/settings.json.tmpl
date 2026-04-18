@@ -13,15 +13,30 @@
     "clangd-lsp@claude-plugins-official": true,
     "superpowers@superpowers-marketplace": true,
     "episodic-memory@superpowers-marketplace": true,
-    "superpowers-developing-for-claude-code@superpowers-marketplace": true
+    "superpowers-developing-for-claude-code@superpowers-marketplace": true,
+    "bit-skills@bit-skills": true
   },
   "extraKnownMarketplaces": {
+    "openai-codex": {
+      "source": {
+        "source": "github",
+        "repo": "openai/codex-plugin-cc"
+      }
+    },
     "superpowers-marketplace": {
       "source": {
         "source": "github",
         "repo": "obra/superpowers-marketplace"
       }
+    },
+    "bit-skills": {
+      "source": {
+        "source": "github",
+        "repo": "bit-vcs/bit-skills"
+      }
     }
   },
-  "language": "日本語"
+  "language": "日本語",
+  "skipDangerousModePermissionPrompt": true,
+  "skipAutoPermissionPrompt": true
 }

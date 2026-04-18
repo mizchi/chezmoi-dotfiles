@@ -14,6 +14,9 @@ path=(
   $HOME/.antigravity/antigravity/bin
   $HOME/.opencode/bin
   $HOME/ghq/github.com/apple/container/bin
+  $HOME/.mooninstall/bin
+  $HOME/.duckdb/cli/latest/duckdb
+
   $path
 )
 
