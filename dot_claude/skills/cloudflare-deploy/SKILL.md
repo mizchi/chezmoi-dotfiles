@@ -24,6 +24,63 @@ Not authenticated? → `references/wrangler/auth.md`
 - Interactive/local: `wrangler login` (one-time OAuth)
 - CI/CD: Set `CLOUDFLARE_API_TOKEN` env var
 
+## When to Read `references/`
+
+This SKILL.md is an **index + decision tree**. Actual implementation details (`wrangler.jsonc` binding syntax, SDK-specific APIs, product gotchas) live under `references/<product>/`.
+
+Rules of thumb:
+- Picking a product? Use decision trees below, then load `references/<picked-product>/`
+- Writing a new `wrangler.jsonc`? Always `references/workers/configuration.md` first (binding shapes are non-inheritable and easy to get wrong)
+- CI/CD setup? Load `references/ci/github-actions.md` (GitHub Actions + OIDC + PR preview + tag deploy recipes)
+- Deploy fails / unexpected error? Grep `references/<product>/gotchas.md` before re-running
+- The minimal example below covers Workers + KV + secret — for anything beyond that, descend into references
+
+## Minimal Worker Example (copy-paste starter)
+
+For a Hello-world Worker with one KV binding and one secret, you don't need to read `references/` at all:
+
+```jsonc
+// wrangler.jsonc
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "my-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "kv_namespaces": [
+    { "binding": "CACHE", "id": "<replace-with-kv-id>" }
+  ]
+}
+```
+
+```ts
+// src/index.ts
+export interface Env {
+  CACHE: KVNamespace;
+  API_SECRET: string;
+}
+export default {
+  async fetch(req: Request, env: Env): Promise<Response> {
+    const hit = await env.CACHE.get("greeting");
+    return new Response(hit ?? "hello");
+  }
+};
+```
+
+Bootstrap commands:
+```bash
+npx wrangler kv namespace create CACHE          # copy printed id into wrangler.jsonc
+npx wrangler secret put API_SECRET              # paste value interactively
+npx wrangler types                              # generate Env types (optional)
+npx wrangler dev                                # local dev at localhost:8787
+npx wrangler deploy                             # production deploy
+```
+
+Pick `compatibility_date` = today's date (YYYY-MM-DD). Update when upgrading `wrangler`.
+
+For Pages / D1 / Durable Objects / multi-env / CI — descend into `references/`.
+
 ## Quick Decision Trees
 
 ### "I need to run code"
