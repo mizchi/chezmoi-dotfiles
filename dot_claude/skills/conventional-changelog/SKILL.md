@@ -204,7 +204,16 @@ jobs:
           manifest-file: .release-please-manifest.json
 ```
 
-commit を conventional 規約で書いて main に push すると、自動で「Release PR」が作られる。merge すると tag + GitHub Release + CHANGELOG 更新が走る。npm publish 連動は別 workflow（`on: release`）で。
+commit を conventional 規約で書いて main に push すると、自動で「Release PR」が作られる。merge すると tag + GitHub Release + CHANGELOG 更新が走る。
+
+**publish 連動 workflow の 2 形態**:
+
+| 形態 | trigger | 利点 | 弱点 |
+|---|---|---|---|
+| 同一 workflow 内で job 分離（`needs: release-please` + `if: outputs.release_created`） | `push: main` | 1 ファイルで完結、release-please の outputs を直接参照、概観しやすい | release-please job が失敗すると publish も巻き込まれる、責務が混ざる |
+| 別 workflow（`on: release`） | `release: { types: [published] }` | 関心の分離、手動 release でも publish が走る、再実行が独立 | secrets / permissions を 2 箇所に書く、release-please outputs が使えない |
+
+**選択指針**: 単一 package・単一 publish 先（npm のみ）なら同一 workflow が簡潔。複数 publish 先（npm + GitHub Container Registry など）や手動 release も許容するなら `on: release` 別 workflow。OIDC Trusted Publishing を使う場合は `id-token: write` 権限を publish job 側にだけ付ければよく、どちらでも成立する。
 
 詳細は `npm-release` skill（ローカル管理）の publish フロー参照。
 
@@ -332,6 +341,31 @@ git-cliff --output CHANGELOG.md            # 全履歴から再生成
 git-cliff --unreleased --prepend CHANGELOG.md  # 未リリース分だけ上に追記
 git-cliff --tag v1.2.0 --output CHANGELOG.md   # 特定 tag 向けに生成
 ```
+
+### cargo-release との結線（具体例）
+
+`Cargo.toml` の `[package.metadata.release]` に hook を仕込む。`cargo release <level>` を叩くと、bump → CHANGELOG 生成 → commit → tag → push が一連で走る:
+
+```toml
+# Cargo.toml
+[package.metadata.release]
+# version bump 後・commit 前に git-cliff で CHANGELOG を更新
+pre-release-hook = ["git", "cliff", "--tag", "v{{version}}", "--unreleased", "--prepend", "CHANGELOG.md"]
+# tag は cargo-release 側が打つ
+tag-name = "v{{version}}"
+# release commit に CHANGELOG.md を含める
+pre-release-commit-message = "chore(release): v{{version}}"
+```
+
+順序:
+
+1. `cargo release minor --execute` → `Cargo.toml` の version bump
+2. `pre-release-hook` で `git cliff` が次 version の `[Unreleased]` を `[v0.2.0] - 2026-04-19` に確定し `CHANGELOG.md` を更新
+3. cargo-release が `Cargo.toml` + `CHANGELOG.md` を release commit にまとめる
+4. `tag-name` で `v0.2.0` を annotated tag として打つ
+5. `cargo publish` + `git push --tags`
+
+**注意**: `git-cliff` 側の `[changelog.bump]` セクション（`features_always_bump_minor` 等）は git-cliff 自身が bump 判断する独自機能で、cargo-release と併用するときは使わない（bump 主体は cargo-release）。`<level>` (patch / minor / major) は人間が選ぶ前提。
 
 ## conventional-changelog-cli（軽量、言語非依存）
 
