@@ -46,3 +46,7 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "vibe"
 source = { path = "/Users/mz/ghq/github.com/mizchi/vibe-lang/integrations/treesitter-vibe" }
+
+[[language]]
+name = "markdown"
+soft-wrap.enable = true
