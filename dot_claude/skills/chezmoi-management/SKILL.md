@@ -53,10 +53,10 @@ chezmoi diff                   # source と dest の差分
 chezmoi status                 # 大雑把な状態（MM/M /?? など）
 ```
 
-**`chezmoi diff` の方向感覚**: 出力は `- target` / `+ dest` の順。
-- `-` 行 = target (source.tmpl 展開後の期待状態) にある内容
-- `+` 行 = dest (現在の実ファイル) にある内容
-- `chezmoi apply` すると `+` が消えて `-` が適用される方向（dest が target に合わせられる）
+**`chezmoi diff` の方向感覚**: 出力は `- dest` / `+ target` の順（git diff の old=現在 / new=適用後 規約に従う）。
+- `-` 行 = dest (現在の実ファイル) にある内容 — apply で **削除される**
+- `+` 行 = target (source.tmpl 展開後の期待状態) にある内容 — apply で **追加される**
+- `chezmoi apply` は dest を target に合わせる方向（source → dest）
 
 混乱したら `cat <source>` と `cat <dest>` を両方見て確定するのが早い。
 
