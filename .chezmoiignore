@@ -3,6 +3,11 @@ node_modules
 package-lock.json
 **/.DS_Store
 
+# MoonBit build artifacts (inside skill assets/)
+**/_build
+**/target
+**/.mooncakes
+
 # Security-sensitive skills kept out of public dotfiles.
 # npm-release contains GitHub App IDs, release automation details,
 # and distribution scripts that are useful for attackers targeting the
