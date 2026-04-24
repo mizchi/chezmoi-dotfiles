@@ -13,3 +13,24 @@ package-lock.json
 # and distribution scripts that are useful for attackers targeting the
 # release pipeline. Keep it local-only.
 .claude/skills/npm-release/**
+
+# Skills migrated to mizchi/skills (APM-managed). chezmoi must not
+# re-deploy these; apm install -g handles the lifecycle.
+.claude/skills/apm-usage/**
+.claude/skills/ast-grep-practice/**
+.claude/skills/chezmoi-management/**
+.claude/skills/cloudflare-deploy/**
+.claude/skills/conventional-changelog/**
+.claude/skills/devbox/**
+.claude/skills/dotenvx/**
+.claude/skills/empirical-prompt-tuning/**
+.claude/skills/gh-fix-ci/**
+.claude/skills/gleam-practice/**
+.claude/skills/justfile/**
+.claude/skills/mizchi-blog-style/**
+.claude/skills/moonbit-js-binding/**
+.claude/skills/nix-setup/**
+.claude/skills/playwright-cli/**
+.claude/skills/playwright-test/**
+.claude/skills/retrospective-codify/**
+.claude/skills/tech-article-reproducibility/**

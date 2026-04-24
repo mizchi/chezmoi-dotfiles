@@ -1,4 +1,0 @@
-use flake
-watch_file rust-toolchain.toml
-# Load local overrides (API keys etc.) when present. Never commit .env.local.
-dotenv_if_exists .env.local
