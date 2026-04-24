@@ -7,7 +7,6 @@ dependencies:
   - moonbitlang/moonbit-agent-guide/moonbit-agent-guide
   - moonbitlang/moonbit-agent-guide/moonbit-refactoring
   - moonbitlang/moonbit-agent-guide/moonbit-c-binding
-  - mizchi/moonbit-practice/skills/moonbit-practice
   - mizchi/flaker/skills/flaker-setup
   - ast-grep/agent-skill/ast-grep
   - mizchi/tui.mbt/skills/tuimbt-practice
@@ -24,6 +23,7 @@ dependencies:
   - mizchi/skills/justfile
   - mizchi/skills/mizchi-blog-style
   - mizchi/skills/moonbit-js-binding
+  - mizchi/skills/moonbit-practice
   - mizchi/skills/nix-setup
   - mizchi/skills/playwright-cli
   - mizchi/skills/playwright-test
