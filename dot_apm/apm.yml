@@ -11,5 +11,23 @@ dependencies:
   - mizchi/flaker/skills/flaker-setup
   - ast-grep/agent-skill/ast-grep
   - mizchi/tui.mbt/skills/tuimbt-practice
+  - mizchi/skills/apm-usage
+  - mizchi/skills/ast-grep-practice
+  - mizchi/skills/chezmoi-management
+  - mizchi/skills/cloudflare-deploy
+  - mizchi/skills/conventional-changelog
+  - mizchi/skills/devbox
+  - mizchi/skills/dotenvx
+  - mizchi/skills/empirical-prompt-tuning
+  - mizchi/skills/gh-fix-ci
+  - mizchi/skills/gleam-practice
+  - mizchi/skills/justfile
+  - mizchi/skills/mizchi-blog-style
+  - mizchi/skills/moonbit-js-binding
+  - mizchi/skills/nix-setup
+  - mizchi/skills/playwright-cli
+  - mizchi/skills/playwright-test
+  - mizchi/skills/retrospective-codify
+  - mizchi/skills/tech-article-reproducibility
   mcp: []
 scripts: {}
