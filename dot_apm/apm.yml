@@ -29,5 +29,6 @@ dependencies:
   - mizchi/skills/playwright-test
   - mizchi/skills/retrospective-codify
   - mizchi/skills/tech-article-reproducibility
+  - mizchi/skills/upstream-fix-and-pin
   mcp: []
 scripts: {}
