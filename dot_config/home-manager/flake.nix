@@ -17,6 +17,7 @@
         then import privatePath
         else {
           username = "user";
+          gitName = "User";
           email = "user@example.com";
         };
     in
@@ -29,9 +30,10 @@
             {
               home.username = private.username;
               home.homeDirectory = "/Users/${private.username}";
-              # programs.git の user.name/email は ~/.gitconfig が引き続き提供する。
-              # home-manager に寄せたい時は次の行を有効化:
-              # programs.git.settings.user = { name = private.username; email = private.email; };
+              programs.git.settings.user = {
+                name = private.gitName;
+                email = private.email;
+              };
             }
           ];
         };

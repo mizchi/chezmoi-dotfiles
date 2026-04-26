@@ -23,6 +23,7 @@
     gh
     jq
     hyperfine
+    difftastic
   ];
 
   home.sessionVariables = {
@@ -180,18 +181,56 @@
 
   programs.git = {
     enable = true;
-    settings = {
-      init = { defaultBranch = "main"; };
-      pull = { rebase = true; };
-      push = { autoSetupRemote = true; };
-      rebase = { autoStash = true; };
-    };
     ignores = [
       "**/.claude/settings.local.json"
       ".mizchi/**"
       ".local/**"
       "mise.local.toml"
+      ".mise.local.toml"
+      "apm_modules/"
+      ".frontend-review/"
     ];
+    settings = {
+      # user.name / user.email は flake.nix で private.nix から注入
+      alias = {
+        s = "status";
+        co = "commit";
+      };
+      init.defaultBranch = "main";
+      column.ui = "auto";
+      branch.sort = "-committerdate";
+      tag.sort = "version:refname";
+      diff = {
+        algorithm = "histogram";
+        colorMoved = "plain";
+        mnemonicPrefix = true;
+        renames = true;
+        external = "difft";
+      };
+      push = {
+        default = "simple";
+        autoSetupRemote = true;
+        followTags = true;
+      };
+      fetch = {
+        prune = true;
+        pruneTags = true;
+        all = true;
+      };
+      pull.rebase = true;
+      help.autocorrect = "prompt";
+      commit.verbose = true;
+      rerere = {
+        enabled = true;
+        autoupdate = true;
+      };
+      rebase = {
+        autoSquash = true;
+        autoStash = true;
+        updateRefs = true;
+      };
+      protocol.file.allow = "always";
+    };
   };
 
   programs.zsh = {
