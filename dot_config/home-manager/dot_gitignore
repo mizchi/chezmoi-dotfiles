@@ -1,0 +1,8 @@
+# Personal data — never commit.
+private.nix
+*.secret.nix
+
+# Nix build artifacts
+result
+result-*
+.direnv/

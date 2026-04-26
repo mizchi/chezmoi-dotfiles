@@ -30,7 +30,18 @@ package-lock.json
 .claude/skills/mizchi-blog-style/**
 .claude/skills/moonbit-js-binding/**
 .claude/skills/nix-setup/**
+.claude/skills/node-sqlite-vec/**
 .claude/skills/playwright-cli/**
 .claude/skills/playwright-test/**
 .claude/skills/retrospective-codify/**
 .claude/skills/tech-article-reproducibility/**
+
+# age private identity (NEVER commit). Defensive guard against an
+# accidental `chezmoi add ~/.config/age/`; the key file lives only on
+# the local machine and must be backed up out-of-band (1Password etc.).
+.config/age/**
+
+# Nix dev-shell + build artifacts under home-manager dir.
+.config/home-manager/.direnv/**
+.config/home-manager/result
+.config/home-manager/result-*
