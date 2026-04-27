@@ -14,16 +14,43 @@
   ];
 
   home.packages = with pkgs; [
+    # 開発系の中核 CLI（programs.* wrapper を使わないもの）
     ripgrep
     fd
-    bat
-    eza
     just
     ast-grep
-    gh
     jq
     hyperfine
     difftastic
+
+    # bulk migration from brew (Tier 3)
+    actionlint
+    aws-vault
+    awscli2
+    buf
+    duckdb
+    ghq
+    git-filter-repo
+    hey
+    k6
+    mercurial
+    podman
+    colima
+    lima
+    protobuf
+    shellcheck
+    sqlc
+    stripe-cli
+    swiftlint
+    tig
+    tree-sitter
+    viu
+    websocat
+    wget
+    xcodegen
+    zig
+    gnupg
+    go            # brew autoremove で消えたので復元
   ];
 
   home.sessionVariables = {
@@ -99,6 +126,22 @@
     enable = true;
     enableZshIntegration = true;
   };
+
+  # Tier 2: programs.* wrapper 経由で管理（package + 設定が一括でつく）
+  # zsh integration は手書き shellAliases と被るため、必要時だけ enable
+  programs.bat.enable = true;
+  programs.eza.enable = true;
+  programs.gh = {
+    enable = true;
+    settings = {
+      git_protocol = "https";
+      aliases.co = "pr checkout";
+    };
+  };
+  programs.tmux.enable = true;
+  programs.lazygit.enable = true;
+  programs.btop.enable = true;
+  programs.yazi.enable = true;
 
   programs.helix = {
     enable = true;
