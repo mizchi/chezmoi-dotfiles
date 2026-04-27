@@ -4,14 +4,9 @@
   home.stateVersion = "24.11";
   programs.home-manager.enable = true;
 
-  # nixpkgs-unstable HEAD で direnv-2.37.1 のテスト (./test/direnv-test.zsh) が
-  # macOS の Nix sandbox 環境で hang する。nix-direnv も propagated dep として
-  # 同じ derivation を引くため、overlay で global に doCheck を切る。
-  nixpkgs.overlays = [
-    (_: prev: {
-      direnv = prev.direnv.overrideAttrs (_: { doCheck = false; });
-    })
-  ];
+  # 注: direnv の doCheck=false は flake.nix の sharedOverlays で global に
+  # 当てている（nix-darwin 経由のときに common.nix 側 overlay が ignore される
+  # ため、flake-level で一元管理する形に集約済み）
 
   home.packages = with pkgs; [
     # 開発系の中核 CLI（programs.* wrapper を使わないもの）
@@ -64,6 +59,9 @@
   };
 
   home.sessionPath = [
+    # nix-darwin + home-manager の useUserPackages=true 経路で user packages
+    # の実体が置かれる場所（旧 ~/.nix-profile/bin はもう使わない）
+    "/etc/profiles/per-user/mz/bin"
     "$HOME/.nix-profile/bin"
     "$HOME/.local/bin"
     "$HOME/brew/bin"
