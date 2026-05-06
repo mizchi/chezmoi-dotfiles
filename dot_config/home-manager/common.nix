@@ -56,6 +56,7 @@
     WASMTIME_HOME = "$HOME/.wasmtime";
     CARAPACE_BRIDGES = "zsh,fish,bash,inshellisense";
     DIRENV_LOG_FORMAT = "";
+    _ZO_DOCTOR = "0";
   };
 
   home.sessionPath = [
@@ -337,6 +338,12 @@
       }
       zle -N ghq-fzf_change_directory
       bindkey '^f' ghq-fzf_change_directory
+
+      # /usr/bin/git は Apple shim で DEVELOPER_DIR (nix apple-sdk) 配下の git を呼び、
+      # その過程で古い xcbuild の xcrun が新 SDK Info.plist の FamilyDisplayName キーを
+      # 認識できず警告を出す。home-manager profile を /usr/bin より前に置いて回避する。
+      path=("/etc/profiles/per-user/mz/bin" $path)
+      typeset -U path
     '';
   };
 }
