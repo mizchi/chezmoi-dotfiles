@@ -45,3 +45,6 @@ package-lock.json
 .config/home-manager/.direnv/**
 .config/home-manager/result
 .config/home-manager/result-*
+
+# Machine-local home-manager private config.
+.config/home-manager/private.nix
