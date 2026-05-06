@@ -14,6 +14,11 @@ package-lock.json
 # release pipeline. Keep it local-only.
 .claude/skills/npm-release/**
 
+# chloe-chat is a personal persona skill (lives at ~/ghq/github.com/mizchi/skills/chloe-chat,
+# excluded from that public repo via its .gitignore). The ~/.claude/skills/chloe-chat/SKILL.md
+# is just a symlink to the source. Keep chezmoi off it.
+.claude/skills/chloe-chat/**
+
 # Skills migrated to mizchi/skills (APM-managed). chezmoi must not
 # re-deploy these; apm install -g handles the lifecycle.
 .claude/skills/apm-usage/**
