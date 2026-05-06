@@ -1,0 +1,12 @@
+{{- $githubUsername := promptStringOnce . "github_username" "GitHub username" "mizchi" -}}
+{{- $claudeMode := promptStringOnce . "claude_default_mode" "Claude default mode" "auto" -}}
+
+encryption = "age"
+
+[age]
+identity = "~/.config/age/key.txt"
+recipient = "age1cfgus5rfc07zeevjc84r46jzhfzz7c6uk5gftvvkyaqkku52xqeqvyr90x"
+
+[data]
+github_username = {{ $githubUsername | quote }}
+claude_default_mode = {{ $claudeMode | quote }}
