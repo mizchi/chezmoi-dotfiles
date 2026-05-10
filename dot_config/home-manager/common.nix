@@ -17,6 +17,7 @@
     jq
     hyperfine
     difftastic
+    pkl
 
     # bulk migration from brew (Tier 3)
     actionlint
