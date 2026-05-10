@@ -66,7 +66,7 @@ skill には大きく 2 種類あり、invoke 方針を分ける:
 - **Project 固有 skill** (例: `moonbit-practice` / `gh-fix-ci` / `cloudflare-deploy` / `playwright-test` 等の lang/tool 系)
   - 入手は project の `apm.yml` で declare、`apm install` で deploy
   - 利用は CLAUDE.md の指示や project context から自然に判断する。`apm.yml` に書いてあれば「使う前提」、invoke を躊躇しない
-- **Meta skill** (例: `skill-selector` / `apm-usage` / `empirical-prompt-tuning` / `retrospective-codify` / `chezmoi-management`)
+- **Meta skill** (例: `skill-selector` / `skill-finder` / `waxa-eval` / `apm-usage` / `empirical-prompt-tuning` / `retrospective-codify` / `chezmoi-management`)
   - 認識は常に保つ (catalog の存在を意識する) が、**自分から invoke しない**
   - mizchi が「skill-selector で…」「empirical で評価して」と明示的に呼んだときだけ Skill tool で起動する
   - Why: 自動 invoke すると prompt 解釈に skill が override 効きすぎ、 mizchi が想定しない過剰運用 (Phase 1 catalog scan の毎回フル実行など) になる。subagent smoke で挙動確認済
