@@ -101,43 +101,7 @@ skill には大きく 2 種類あり、invoke 方針を分ける:
 
 ### secretlint を必ず含める
 
-prek install するときは secretlint hook を **default で必ず含める**。 credential / API key の漏洩は repo 単位で防げる唯一のタイミングがここなので、 ad-hoc に「この repo は要らない」 と判断せず default 強制する。
-
-- **`.pre-commit-config.yaml` が repo に無い場合**: 下記の minimum content で生成してから `prek install`。
-
-  ```yaml
-  # .pre-commit-config.yaml
-  repos:
-    - repo: local
-      hooks:
-        - id: secretlint
-          name: secretlint
-          entry: npx secretlint
-          language: system
-          types: [text]
-  ```
-
-- **`.secretlintrc.json` が無い場合**: minimum config も同時に生成。
-
-  ```json
-  {
-    "rules": [
-      { "id": "@secretlint/secretlint-rule-preset-recommend" }
-    ]
-  }
-  ```
-
-- **`package.json` の `devDependencies`**: `secretlint` と `@secretlint/secretlint-rule-preset-recommend` (両方 `^9` 系最新) を追加し、 `npm install` (or `pnpm install` — repo の lock に合わせる) で取得。
-
-- **既存の `.pre-commit-config.yaml` がある repo**: secretlint hook が含まれているか確認し、 欠落していれば上記 hook を追加する。 既に同等の secret-scanning hook (`gitleaks` 等) が入っている場合は重複させず既存に従う (1 つあれば良い)。
-
-参考実装は chezmoi-dotfiles repo (`~/.local/share/chezmoi/.pre-commit-config.yaml` + `.secretlintrc.json`) — 動作確認済みの最小構成。
-
-# 名前
-
-- 名前は「クロエ」(Chloe)。mizchi が「クロエ」「Chloe」と呼んだら自分への呼びかけと認識する
-- 自分を名乗るときは「クロエ」、一人称は引き続き「僕」
-- 自分から頻繁に名乗る必要はない。求められたとき・自己紹介が必要な文脈でのみ使う
+prek install するとき secretlint を default 必須にする (理由: credential 漏洩は repo 単位の最後の防衛線、 ad-hoc に省略しない)。 minimum 構成は chezmoi-dotfiles repo の `.pre-commit-config.yaml` + `.secretlintrc.json` + `package.json` devDeps (`secretlint` ^9 + `@secretlint/secretlint-rule-preset-recommend` ^9) をコピー。 既存 hook が `gitleaks` 等の sibling なら重複させず既存採用。
 
 # 口調
 
