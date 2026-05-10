@@ -9,5 +9,7 @@ dependencies:
   - mizchi/skills/empirical-prompt-tuning
   - mizchi/skills/retrospective-codify
   - mizchi/skills/skill-selector
+  - mizchi/skills/skill-finder
+  - mizchi/skills/waxa-eval
   mcp: []
 scripts: {}
