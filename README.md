@@ -51,16 +51,18 @@ After step 2, every `home.packages` entry from `common.nix` (`pkfire`, `ripgrep`
 
 The `programs.git`, `programs.direnv`, `programs.zsh` etc. inside `common.nix` shape the dotfiles those tools read directly, so don't also stage them via chezmoi. When in doubt: if a `programs.*` wrapper exists in home-manager, use it; otherwise chezmoi.
 
-## Pre-commit
+## Pre-push (secretlint)
 
-This repo is protected by [`prek`](https://github.com/j178/prek) + [`secretlint`](https://github.com/secretlint/secretlint) — runs locally on every commit; CLAUDE.md mandates the same hook in every new mizchi-owned repo.
+This repo is protected by **`pkfire` + `secretlint`** — the hook fires on `git push`, scoped to the diff range about to leave the machine. The prek + `.pre-commit-config.yaml` setup was retired in favor of the pkfire-first ecosystem CLAUDE.md mandates for all new mizchi-owned repos.
 
 ```bash
-prek install
+pkf hooks install   # one-time per checkout — writes .git/hooks/pre-push
 ```
 
-Long-term plan: pre-commit migrates to `pkfire` (`Taskfile.pkl` + `pkf hooks install`) along with the rest of the mizchi ecosystem (see `# プロジェクト初期化` in `CLAUDE.md`). Until that migration lands, this repo is left on `prek` to avoid mixing the two changes.
+The actual gate lives in `Taskfile.pkl` (a `pre-push` task that depends on `secretlint`). `secretlint` itself comes from npm devDependencies (`secretlint` ^9 + `@secretlint/secretlint-rule-preset-recommend` ^9), configured by `.secretlintrc.json`. Emergency bypass: `git push --no-verify`.
+
+Rationale for **pre-push and not pre-commit**: secretlint is fast but not free, and re-running it on every micro-commit during a feature branch is wasted attention. The gate that matters is the one between your local repo and the public registry — that's pre-push.
 
 ## Skill-related operations
 
-For day-to-day chezmoi operations (diff, apply, adding a new file, the boundary between chezmoi-tracked and APM-managed skills, prek + secretlint), see the `chezmoi-management` skill at [`mizchi/skills/chezmoi-management`](https://github.com/mizchi/skills/tree/main/chezmoi-management). That skill is the operations guide; this README is the architecture summary.
+For day-to-day chezmoi operations (diff, apply, adding a new file, the boundary between chezmoi-tracked and APM-managed skills, pkfire + secretlint), see the `chezmoi-management` skill at [`mizchi/skills/chezmoi-management`](https://github.com/mizchi/skills/tree/main/chezmoi-management). That skill is the operations guide; this README is the architecture summary.

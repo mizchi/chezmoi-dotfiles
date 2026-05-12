@@ -1,0 +1,56 @@
+/// Taskfile for the chezmoi-dotfiles repo.
+///
+/// Replaces the previous prek + .pre-commit-config.yaml setup with
+/// pkfire's `pkf hooks install`. The only hook configured is
+/// pre-push (running secretlint over the outgoing diff) — the same
+/// behavior the prek hook implemented, just one hook manager fewer.
+///
+/// One-time setup on a fresh checkout:
+///
+///     pkf hooks install   # writes .git/hooks/pre-push
+///
+/// Per-push behavior: `.git/hooks/pre-push` calls `pkf run pre-push`,
+/// which scopes secretlint to the asymmetric diff range
+/// `<push-target>..HEAD`. A new branch with no upstream falls back
+/// to scanning every tracked file (over-cautious but safe).
+///
+/// Emergency bypass: `git push --no-verify`.
+///
+/// Adapted from mizchi/pkfire's recipe 14 (secretlint-pre-push).
+/// The recipe assumes pnpm; this dotfiles repo is currently on npm
+/// (package.json + package-lock.json), so `pnpm exec secretlint`
+/// becomes `npx secretlint`. If/when this repo migrates to pnpm,
+/// switch the `xargs -0` target back to `pnpm exec secretlint --`.
+amends "package://pkg.pkl-lang.org/github.com/mizchi/pkfire/pkfire@0.6.0#/Taskfile.pkl"
+
+local secretlint: Task = new {
+  name = "lint:secretlint"
+  description = "Run secretlint against files in the diff about to be pushed"
+  cmd =
+    #"""
+    set -euo pipefail
+    upstream=$(git rev-parse --symbolic-full-name '@{push}' 2>/dev/null \
+            || git rev-parse --symbolic-full-name '@{u}' 2>/dev/null \
+            || true)
+    if [ -n "$upstream" ]; then
+      files=$(git diff --name-only --diff-filter=ACMR -z "${upstream}..HEAD")
+    else
+      files=$(git ls-files -z)
+    fi
+    if [ -z "$files" ]; then
+      exit 0
+    fi
+    printf '%s' "$files" | xargs -0 npx secretlint --
+    """#
+  cache = false
+}
+
+local prePush: Task = new {
+  name = "pre-push"
+  description = "Pre-push gate: secretlint over the outgoing diff"
+  cmd = "echo pre-push ok"
+  cache = false
+  deps { secretlint }
+}
+
+tasks { secretlint; prePush }
