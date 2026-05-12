@@ -18,6 +18,7 @@
     hyperfine
     difftastic
     pkl
+    pkfire    # typed task runner (Pkl + Bazel-style cache), overlay 経由
 
     # bulk migration from brew (Tier 3)
     actionlint

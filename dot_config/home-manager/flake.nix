@@ -11,9 +11,16 @@
       url = "github:LnL7/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # pkfire — typed task runner (Pkl + Bazel-style cache)。
+    # Pkl リリースタグ `pkfire@<ver>` を `?ref=` で明示しないと `@` が
+    # userinfo として誤解釈されるので注意。
+    pkfire = {
+      url = "github:mizchi/pkfire?ref=pkfire@0.6.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, nix-darwin, ... }:
+  outputs = { self, nixpkgs, home-manager, nix-darwin, pkfire, ... }:
     let
       privatePath = ./private.nix;
       private =
@@ -32,6 +39,11 @@
         (_: prev: {
           # macOS Nix sandbox で direnv 2.37.x の test phase が hang するため doCheck off
           direnv = prev.direnv.overrideAttrs (_: { doCheck = false; });
+        })
+        # pkfire を `pkgs.pkfire` として公開。final.system で aarch64-darwin /
+        # x86_64-linux 等のターゲットに応じた package を引く。
+        (final: _: {
+          pkfire = pkfire.packages.${final.system}.default;
         })
       ];
 
