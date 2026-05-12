@@ -53,7 +53,7 @@ The `programs.git`, `programs.direnv`, `programs.zsh` etc. inside `common.nix` s
 
 ## Pre-push (secretlint)
 
-This repo is protected by **`pkfire` + `secretlint`** — the hook fires on `git push`, scoped to the diff range about to leave the machine. The prek + `.pre-commit-config.yaml` setup was retired in favor of the pkfire-first ecosystem CLAUDE.md mandates for all new mizchi-owned repos.
+This repo is protected by **`pkfire` + `secretlint`** — the hook fires on `git push`, scoped to the diff range about to leave the machine. CLAUDE.md mandates the same hook in every new mizchi-owned repo.
 
 ```bash
 pkf hooks install   # one-time per checkout — writes .git/hooks/pre-push

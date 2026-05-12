@@ -101,8 +101,7 @@ skill には大きく 2 種類あり、invoke 方針を分ける:
   ```
 
 - `Taskfile.pkl` に `hooks { pre-commit { ... }; pre-push { ... } }` を宣言しておけば、`pkf hooks install` が `.git/hooks/pre-commit` / `.git/hooks/pre-push` を生成する。複数回呼んでも壊れない (`pkf` 自身が冪等性を保証)。
-- 旧: `prek install` / `pre-commit install` を別途叩く運用 → 廃止。`.pre-commit-config.yaml` を repo に残す必要もなくなる (規約は `Taskfile.pkl` 一本)。
-- 既存 repo に `.pre-commit-config.yaml` がある場合は無理に置き換えない。pkfire 移行と pre-commit 撤去は別 PR にする。
+- 規約は `Taskfile.pkl` 一本。 `.pre-commit-config.yaml` は使わない。 既存 repo に残っていても、 pkfire 移行と pre-commit 撤去は別 PR で分けて行う。
 
 ### secretlint を必ず含める
 
