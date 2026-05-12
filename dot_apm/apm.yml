@@ -11,5 +11,9 @@ dependencies:
   - mizchi/skills/skill-selector
   - mizchi/skills/skill-finder
   - mizchi/skills/waxa-eval
+  - mizchi/skills/optimizing-descriptions
+  - mizchi/pkfire/skills/pkfire
   mcp: []
 scripts: {}
+targets:
+  - claude
