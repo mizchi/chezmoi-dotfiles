@@ -16,7 +16,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     pkspec = {
-      url = "github:mizchi/pkspec";
+      url = "github:mizchi/pkspec/v0.3.0";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.pkfire.follows = "pkfire";
     };

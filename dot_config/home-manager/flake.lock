@@ -125,15 +125,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1778681148,
-        "narHash": "sha256-PWb3pJ83DLiI488pS4CEDW52D2+WnjPhxZDG5XC3PPM=",
+        "lastModified": 1779028204,
+        "narHash": "sha256-eXyVIaSeI6BX2FNNqxKlaWjrAw+HKrYBtOsr8HOZxK0=",
         "owner": "mizchi",
         "repo": "pkspec",
-        "rev": "72ee267ec932d1ac3487b919fdec5487f8183160",
+        "rev": "480d1461917f0f5fc17c7ebd6ee5d1f8f9a8c832",
         "type": "github"
       },
       "original": {
         "owner": "mizchi",
+        "ref": "v0.3.0",
         "repo": "pkspec",
         "type": "github"
       }
