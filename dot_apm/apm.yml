@@ -4,15 +4,15 @@ description: APM project for mz
 author: mizchi
 dependencies:
   apm:
-  - mizchi/skills/apm-usage
-  - mizchi/skills/chezmoi-management
-  - mizchi/skills/empirical-prompt-tuning
-  - mizchi/skills/retrospective-codify
-  - mizchi/skills/skill-selector
-  - mizchi/skills/skill-finder
-  - mizchi/skills/waxa-eval
-  - mizchi/skills/optimizing-descriptions
-  - mizchi/pkfire/skills/pkfire
+  - mizchi/skills/apm-usage#574aa669e590d8fe9680e37bd7842b492e21637d
+  - mizchi/skills/chezmoi-management#574aa669e590d8fe9680e37bd7842b492e21637d
+  - mizchi/skills/empirical-prompt-tuning#574aa669e590d8fe9680e37bd7842b492e21637d
+  - mizchi/skills/retrospective-codify#574aa669e590d8fe9680e37bd7842b492e21637d
+  - mizchi/skills/skill-selector#574aa669e590d8fe9680e37bd7842b492e21637d
+  - mizchi/skills/skill-finder#574aa669e590d8fe9680e37bd7842b492e21637d
+  - mizchi/skills/waxa-eval#574aa669e590d8fe9680e37bd7842b492e21637d
+  - mizchi/skills/optimizing-descriptions#574aa669e590d8fe9680e37bd7842b492e21637d
+  - mizchi/pkfire/skills/pkfire#5e28fff65b7f5bbe1269e12861566838fbb03332
   mcp: []
 scripts: {}
 targets:
