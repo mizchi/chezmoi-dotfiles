@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, config, ... }:
 
 {
   home.stateVersion = "24.11";
@@ -49,6 +49,17 @@
     zig
     gnupg
     go            # brew autoremove で消えたので復元
+
+    # secret 管理: 層1 は sops-nix が activation 復号、層2(direnv) と手動 sops edit 用に CLI を入れる
+    sops
+    age
+    ssh-to-age
+
+    # brew から nixpkgs へ移行（ariga/tap・k1low/tap を排除、dotenvx は sops 一本化で撤去）
+    atlas         # ← ariga/tap/atlas
+    tbls          # ← k1low/tap/tbls
+    swiftformat
+    cocoapods
   ];
 
   home.sessionVariables = {
@@ -347,6 +358,14 @@
       # 認識できず警告を出す。home-manager profile を /usr/bin より前に置いて回避する。
       path=("/etc/profiles/per-user/mz/bin" $path)
       typeset -U path
+
+      # 層1 secret: sops-nix が activation 時に復号した nix store 外 0400 ファイル
+      # (config.sops.secrets.<name>.path) から読んで export する。zsh init に
+      # 焼かれるのは「パス」だけで値は焼かれない（旧 private.nix env 方式と違い
+      # nix store への平文漏洩が無い）。secret は secrets.nix で宣言。
+      ${lib.concatMapStringsSep "\n      " (name:
+        ''[[ -r "${config.sops.secrets.${name}.path}" ]] && export ${name}="$(<"${config.sops.secrets.${name}.path}")"'')
+        (builtins.attrNames config.sops.secrets)}
     '';
   };
 }

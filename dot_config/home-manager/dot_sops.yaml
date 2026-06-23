@@ -1,0 +1,7 @@
+keys:
+  - &mz age13pne9nghv2322kfgd62uk9m7vaumxgd62wpauga92xfgct8f3u2svzp824
+creation_rules:
+  - path_regex: secrets/.*\.(ya?ml|json)$
+    key_groups:
+      - age:
+          - *mz

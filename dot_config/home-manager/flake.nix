@@ -20,9 +20,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.pkfire.follows = "pkfire";
     };
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, nix-darwin, pkfire, pkspec, ... }:
+  outputs = { self, nixpkgs, home-manager, nix-darwin, pkfire, pkspec, sops-nix, ... }:
     let
       privatePath = ./private.nix;
       private =
@@ -54,7 +58,7 @@
 
       # home-manager 側の user モジュール（standalone と darwin module の両方で再利用）
       homeUser = { pkgs, lib, ... }: {
-        imports = [ ./common.nix ];
+        imports = [ ./common.nix ./secrets.nix sops-nix.homeManagerModules.sops ];
         home.username = private.username;
         home.homeDirectory = "/Users/${private.username}";
         programs.git.settings.user = {
