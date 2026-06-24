@@ -18,7 +18,7 @@
     hyperfine
     difftastic
     pkl
-    pkfire    # typed task runner (Pkl + Bazel-style cache), overlay 経由
+    # pkfire は外した: `moon install` で ~/.moon/bin/pkf を直接管理する (MoonBit 版を dogfood)
     pkspec    # language-agnostic spec/test runner, overlay 経由
 
     # bulk migration from brew (Tier 3)
