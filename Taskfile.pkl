@@ -32,15 +32,18 @@ local secretlint: Task = new {
     upstream=$(git rev-parse --symbolic-full-name '@{push}' 2>/dev/null \
             || git rev-parse --symbolic-full-name '@{u}' 2>/dev/null \
             || true)
+    # Stream the NUL-delimited file list straight into xargs. Do NOT
+    # round-trip through a `files=$(... -z)` variable: command
+    # substitution strips NUL bytes, which concatenates every path into
+    # one bogus filename and makes secretlint fail with "Not found
+    # target files" on any multi-file push. Guard the empty case with a
+    # separate name-only count (the scan itself stays NUL-safe).
     if [ -n "$upstream" ]; then
-      files=$(git diff --name-only --diff-filter=ACMR -z "${upstream}..HEAD")
+      [ "$(git diff --name-only --diff-filter=ACMR "${upstream}..HEAD" | wc -l)" -eq 0 ] && exit 0
+      git diff --name-only --diff-filter=ACMR -z "${upstream}..HEAD" | xargs -0 npx secretlint --
     else
-      files=$(git ls-files -z)
+      git ls-files -z | xargs -0 npx secretlint --
     fi
-    if [ -z "$files" ]; then
-      exit 0
-    fi
-    printf '%s' "$files" | xargs -0 npx secretlint --
     """#
   cache = false
 }
