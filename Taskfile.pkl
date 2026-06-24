@@ -53,6 +53,11 @@ local prePush: Task = new {
   description = "Pre-push gate: secretlint over the outgoing diff"
   cmd = "echo pre-push ok"
   cache = false
+  // `pkf hooks install` writes `pkf run pre-push -- "$@"`, and git
+  // hands the pre-push hook `<remote-name> <remote-url>` as argv. The
+  // MoonBit pkf (>=0.12.0) rejects positional args on a task without
+  // acceptsArgs, so opt in and ignore them.
+  acceptsArgs = true
   deps { secretlint }
 }
 
