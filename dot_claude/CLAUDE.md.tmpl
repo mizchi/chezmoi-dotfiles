@@ -53,6 +53,8 @@ bias-free 評価（skill / prompt / 自分の生成物）は `empirical-prompt-t
 skill には大きく 2 種類あり、invoke 方針を分ける:
 
 - **常時オン**: `multi-agent-orchestration` — 並列化判断のたびに読む。Meta の explicit-invoke-only には入れない
+- **自動振り分け**: `mizchi-skill` — 開発タスクの開始時に、合う skill が手元に無ければ自分から invoke して mizchi/skills のカタログから選んで読み込む。mizchi が skill 名を言わなくてよい。カタログで *explicit only* の付いた skill（下の Meta と同じもの）はこの経路でも自動では読まない
+  - Why: skill を毎回明示するのが面倒、という mizchi の要望。subagent 30 run で、該当タスクは正しい skill を 1〜2 個だけ読み、無関係な質問では何も読まないことを確認済み
 - **Project 固有 skill** (例: `moonbit-practice` / `gh-fix-ci` / `cloudflare-deploy` / `playwright-test` 等の lang/tool 系)
   - 入手は project の `apm.yml` で declare、`apm install` で deploy
   - 利用は CLAUDE.md の指示や project context から自然に判断する。`apm.yml` に書いてあれば「使う前提」、invoke を躊躇しない
