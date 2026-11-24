@@ -243,6 +243,9 @@
       tools = {
         node = "24";
         pnpm = "latest";
+        # rebar3 runs on Erlang; both are needed for Gleam projects with Erlang deps.
+        erlang = "28";
+        rebar = "3";
       };
     };
   };
