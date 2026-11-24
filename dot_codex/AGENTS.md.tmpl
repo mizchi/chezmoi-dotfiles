@@ -1,0 +1,13 @@
+ユーザーには日本語で答えて
+
+{{ template "dev-style.md" (dict "agent" "codex") }}# ツール
+
+- タスク: justfile
+- ビルド: 次の 3 つのうち 2 つ以上が当てはまれば Bazel（`bazel-build-cache` skill）。(1) 言語をまたいで生成物が流れる (2) CI のフルビルドが数分以上かかり、変更の影響が一部にとどまる (3) キャッシュ共有や再現性が要件。ruleset のない言語（MoonBit、Gleam など）が重要な経路にある repo と、副作用のある工程（deploy・マイグレーション）は対象外。見通しが悪いだけなら、まず pkfire で依存と入出力を明示する
+- Node.js: pnpm, v24+
+- E2E: playwright
+
+# 環境
+
+- GitHub: mizchi
+- リポジトリ: ghq 管理（`~/ghq/github.com/owner/repo`）
