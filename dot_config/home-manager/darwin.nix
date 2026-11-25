@@ -72,11 +72,13 @@
       "dotenvx/brew"
       "felixkratz/formulae"
       "k1low/tap"
-      "microsoft/apm"
-      "pkgxdev/made"
       "sinelaw/fresh"
     ];
 
+    # Rust toolchains come from rustup (~/.cargo/bin), not Homebrew. Formulae that
+    # need Rust to build from source in this non-standard prefix (gleam,
+    # cargo-binstall) moved to home.packages; apm comes from its own installer
+    # (/usr/local/bin/apm) and pkgx was dropped.
     brews = [
       "abseil"
       "atlas"
@@ -84,7 +86,6 @@
       "bash"
       "bison"
       "borders"
-      "cargo-binstall"
       "chafa"
       "chezmoi"
       "cmake"
@@ -98,7 +99,6 @@
       "fresh"
       "gibo"
       "git-wt"
-      "gleam"
       "glfw"
       "gnutls"
       "gobject-introspection"
@@ -110,13 +110,10 @@
       "libpq"
       "lua"
       "meson"
-      "apm"
       "nowplaying-cli"
       "opam"
-      "pkgx"
       "python-setuptools"
       "riscv64-elf-gcc"
-      "rust"
       "sbt"
       "sketchybar"
       "switchaudio-osx"

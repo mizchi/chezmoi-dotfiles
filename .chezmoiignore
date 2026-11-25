@@ -53,3 +53,11 @@ package-lock.json
 
 # Machine-local home-manager private config.
 .config/home-manager/private.nix
+
+# Honeypot credentials, observation data, and the separately managed checkout.
+.config/zeijack/honeypot
+.config/zeijack/honeypot/**
+.local/share/zeijack/honeypot
+.local/share/zeijack/honeypot/**
+ghq/github.com/mizchi/zeijack/honeypot
+ghq/github.com/mizchi/zeijack/honeypot/**

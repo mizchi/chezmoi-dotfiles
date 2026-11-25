@@ -1,20 +1,7 @@
-# 開発スタイル
-
-TDD で開発する（探索 → Red → Green → Refactoring）。
-KPI やカバレッジ目標が与えられたら、達成するまで試行する。
-不明瞭な指示は質問して明確にする。
-
-# コード設計
-
-- 関心の分離を保つ
-- 状態とロジックを分離する
-- 可読性と保守性を重視する
-- コントラクト層（API/型）を厳密に定義し、実装層は再生成可能に保つ
-- 静的検査可能なルールはプロンプトではなく、その環境の linter か ast-grep で記述する
-
-# ツール
+{{ template "dev-style.md" (dict "agent" "claude") }}# ツール
 
 - タスク: pkfire (`Taskfile.pkl` + `pkf run <task>`)。justfile / Makefile しか無い既存 repo はそのまま尊重し、無理に置き換えない。新規 repo・自分の repo は pkfire を第一候補にする (理由: 型 + cache + service orchestration が一本で済むので justfile から戻る理由がない)
+- ビルド: 次の 3 つのうち 2 つ以上が当てはまれば Bazel（`bazel-build-cache` skill）。(1) 言語をまたいで生成物が流れる (2) CI のフルビルドが数分以上かかり、変更の影響が一部にとどまる (3) キャッシュ共有や再現性が要件。ruleset のない言語（MoonBit、Gleam など）が重要な経路にある repo と、副作用のある工程（deploy・マイグレーション）は対象外。見通しが悪いだけなら、まず pkfire で依存と入出力を明示する
 - Node.js: pnpm, v24+
 - E2E: playwright
 
@@ -44,25 +31,17 @@ KPI やカバレッジ目標が与えられたら、達成するまで試行す�
 
 # 並列化と subagent
 
-タスクを受けたら最初に「**並列化できる subtask は何か**」「**subagent に投げて main context を空けられるか**」を洗い出してから動く。default は subagent 優先 / 並列優先。
+`multi-agent-orchestration` は常に有効。タスクを受けたらこの skill を読んでから single vs multi とトポロジーを決める。default は単一エージェント。独立して検証できる仕事があるときだけ multi。判断表は skill 本体にあり、ここに再掲しない。
 
-判断:
-
-- **互いに独立な 2+ task** → Agent tool で 1 message 内に並列 dispatch (independent search、 multi-scenario eval、 multi-model 比較など)
-- **大量探索・grep・解析 (3+ query 規模)** → `general-purpose` / `Explore` subagent に投げ、 main は要約だけ受け取る
-- **bias-free 評価** (skill / prompt / 自分の生成物の検証) → 新規 subagent。 「自分で再読」 は禁じ手 (`empirical-prompt-tuning` の caveat 通り)
-- **Long-running batch** (Bash の 10 分上限を超える / `apm install` を多 repo に回す等) → subagent dispatch か `run_in_background` + `Monitor`
-
-避けるべき:
-
-- 直列依存 (前 task の結果が次 task 入力) を無理に並列化する
-- 1-step / short lookup を subagent に投げる (overhead がコストに見合わない)
-- subagent と main で同じ作業を二重で走らせる
+bias-free 評価（skill / prompt / 自分の生成物）は `empirical-prompt-tuning` の caveat 通り、新規 subagent に投げて「自分で再読」しない。これは mizchi が empirical を明示したときだけ。
 
 # Skill 利用方針
 
 skill には大きく 2 種類あり、invoke 方針を分ける:
 
+- **常時オン**: `multi-agent-orchestration` — 並列化判断のたびに読む。Meta の explicit-invoke-only には入れない
+- **自動振り分け**: `mizchi-skill` — 開発タスクの開始時に、合う skill が手元に無ければ自分から invoke して mizchi/skills のカタログから選んで読み込む。mizchi が skill 名を言わなくてよい。カタログで *explicit only* の付いた skill（下の Meta と同じもの）はこの経路でも自動では読まない
+  - Why: skill を毎回明示するのが面倒、という mizchi の要望。subagent 30 run で、該当タスクは正しい skill を 1〜2 個だけ読み、無関係な質問では何も読まないことを確認済み
 - **Project 固有 skill** (例: `moonbit-practice` / `gh-fix-ci` / `cloudflare-deploy` / `playwright-test` 等の lang/tool 系)
   - 入手は project の `apm.yml` で declare、`apm install` で deploy
   - 利用は CLAUDE.md の指示や project context から自然に判断する。`apm.yml` に書いてあれば「使う前提」、invoke を躊躇しない

@@ -4,6 +4,25 @@
   home.stateVersion = "24.11";
   programs.home-manager.enable = true;
 
+  programs.nh = {
+    enable = true;
+    clean = {
+      enable = true;
+      dates = "weekly";
+    };
+  };
+
+  # Home Manager's Darwin module appends clean.extraArgs as one launchd
+  # argument. Keep each nh option separate so the scheduled cleanup works.
+  launchd.agents.nh-clean.config.ProgramArguments = lib.mkForce [
+    "${lib.getExe config.programs.nh.package}"
+    "clean"
+    "user"
+    "--keep-since"
+    "30d"
+    "--keep-one"
+  ];
+
   # 注: direnv の doCheck=false は flake.nix の sharedOverlays で global に
   # 当てている（nix-darwin 経由のときに common.nix 側 overlay が ignore される
   # ため、flake-level で一元管理する形に集約済み）
@@ -16,6 +35,8 @@
     ast-grep
     jq
     hyperfine
+    gleam
+    cargo-binstall
     difftastic
     pkl
     # pkfire は外した: `moon install` で ~/.moon/bin/pkf を直接管理する (MoonBit 版を dogfood)
@@ -64,6 +85,7 @@
 
   home.sessionVariables = {
     EDITOR = "hx";
+    DEVELOPER_DIR = "/Applications/Xcode.app/Contents/Developer";
     HELIX_RUNTIME = "$HOME/ghq/github.com/helix-editor/helix/runtime";
     HOMEBREW_FORBIDDEN_FORMULAE = "node python python3 pip npm pnpm yarn claude";
     BUN_INSTALL = "$HOME/.bun";
@@ -81,6 +103,7 @@
     "$HOME/.local/bin"
     "$HOME/brew/bin"
     "$HOME/.cargo/bin"
+    "$HOME/.elan/bin"
     "$HOME/bin"
     "$HOME/.deno/bin"
     "$HOME/.bun/bin"
@@ -138,6 +161,8 @@
   programs.fzf = {
     enable = true;
     enableZshIntegration = true;
+    # Atuin is sourced later and intentionally owns Ctrl-R.
+    historyWidget.zsh.command = "";
   };
 
   # Tier 2: programs.* wrapper 経由で管理（package + 設定が一括でつく）
@@ -154,7 +179,11 @@
   programs.tmux.enable = true;
   programs.lazygit.enable = true;
   programs.btop.enable = true;
-  programs.yazi.enable = true;
+  programs.yazi = {
+    enable = true;
+    # Keep the pre-26.05 shell wrapper name across Home Manager updates.
+    shellWrapperName = "yy";
+  };
 
   programs.helix = {
     enable = true;
@@ -214,6 +243,9 @@
       tools = {
         node = "24";
         pnpm = "latest";
+        # rebar3 runs on Erlang; both are needed for Gleam projects with Erlang deps.
+        erlang = "28";
+        rebar = "3";
       };
     };
   };
