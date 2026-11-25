@@ -45,6 +45,9 @@
         (_: prev: {
           # macOS Nix sandbox で direnv 2.37.x の test phase が hang するため doCheck off
           direnv = prev.direnv.overrideAttrs (_: { doCheck = false; });
+          # mise 2026.10.17 の nextest が macOS sandbox で 2 件 4s timeout（aqua registry /
+          # mise.toml schema）して build が落ち、binary cache にも乗っていないため doCheck off
+          mise = prev.mise.overrideAttrs (_: { doCheck = false; });
         })
         # pkfire を `pkgs.pkfire` として公開。final.system で aarch64-darwin /
         # x86_64-linux 等のターゲットに応じた package を引く。
